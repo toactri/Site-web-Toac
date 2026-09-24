@@ -5,7 +5,7 @@ import Link from "next/link";
 import SiteImage from "@/components/SiteImage";
 import { slugify } from "@/lib/slug";
 import { PARTENAIRES, PARTENAIRES_INSTITUTIONNELS } from "@/content/partenaires";
-import { getCmsCatalog, getCmsPageBlocks, getCmsPages } from "@/lib/cms";
+import { getCmsCatalog, getCmsPageBlocks, getCmsPages, partnerPageHrefResolver } from "@/lib/cms";
 import { CmsEditableText, CmsEditableImage, CmsPartnerName, CmsAddTile } from "@/components/cms-edit";
 
 export const metadata: Metadata = pageMetadata({
@@ -56,9 +56,7 @@ export default async function PartenairesPage() {
   ]);
   const partenairesSection = cmsCatalog?.find((s) => s.name === "Partenaires");
   const institutionnelsSection = cmsCatalog?.find((s) => s.name === "Partenaires institutionnels");
-  const pageSlugs = new Set(cmsPages?.map((p) => p.slug) ?? []);
-  const detailHrefFor = (name: string) =>
-    pageSlugs.has(slugify(name)) ? `/partenaires/${slugify(name)}` : undefined;
+  const detailHrefFor = partnerPageHrefResolver(cmsPages);
 
   return (
     <Suspense fallback={null}>

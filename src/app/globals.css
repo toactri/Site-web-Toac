@@ -48,6 +48,18 @@
   --color-toac-gray-200: var(--toac-gray-200);
 }
 
+/*
+ * Tailwind 4 remet cursor: default sur les boutons (Tailwind 3 laissait la
+ * main). On rétablit la main sur tout le site, sauf bouton désactivé. Dans
+ * @layer base pour qu'une classe utilitaire (cursor-*) garde la priorité.
+ */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled):not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

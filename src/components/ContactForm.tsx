@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { inputClass, labelClass } from "@/components/formStyles";
 
 export default function ContactForm() {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -58,21 +59,21 @@ export default function ContactForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="name" className="mb-1 block text-sm font-medium text-toac-blue-900">Nom</label>
-          <input id="name" name="name" required className="w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30" />
+          <label htmlFor="name" className={labelClass}>Nom</label>
+          <input id="name" name="name" required className={inputClass} />
         </div>
         <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium text-toac-blue-900">Email</label>
-          <input id="email" name="email" type="email" required className="w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30" />
+          <label htmlFor="email" className={labelClass}>Email</label>
+          <input id="email" name="email" type="email" required className={inputClass} />
         </div>
       </div>
       <div>
-        <label htmlFor="subject" className="mb-1 block text-sm font-medium text-toac-blue-900">Sujet</label>
-        <input id="subject" name="subject" className="w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30" />
+        <label htmlFor="subject" className={labelClass}>Sujet</label>
+        <input id="subject" name="subject" className={inputClass} />
       </div>
       <div>
-        <label htmlFor="message" className="mb-1 block text-sm font-medium text-toac-blue-900">Message</label>
-        <textarea id="message" name="message" rows={5} required className="w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30" />
+        <label htmlFor="message" className={labelClass}>Message</label>
+        <textarea id="message" name="message" rows={5} required className={inputClass} />
       </div>
 
       {/* Champ piège anti-bot : masqué visuellement et aux lecteurs d'écran, un vrai visiteur ne le remplit jamais. */}

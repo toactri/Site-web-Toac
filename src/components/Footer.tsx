@@ -19,12 +19,15 @@ export default function Footer({
   footerBlocks,
   footerItems,
   partenairesSection,
+  partnerHrefFor,
   socialLinks,
   email,
 }: {
   footerBlocks?: CmsPageBlock[] | null;
   footerItems?: NavLink[] | null;
   partenairesSection?: CmsCatalogSection;
+  /** Lien vers la page du partenaire sur le site, si elle existe (sinon lien externe). */
+  partnerHrefFor?: (name: string) => string | undefined;
   socialLinks?: CmsSiteSettings["social_links"];
   email?: string;
 }) {
@@ -144,6 +147,7 @@ export default function Footer({
                       as="span"
                       value={p.name}
                       url={p.url}
+                      href={partnerHrefFor?.(p.name)}
                       target={{ kind: "product", id: p.id, field: "name" }}
                       className="hover:text-white"
                     />

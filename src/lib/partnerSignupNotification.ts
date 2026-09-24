@@ -1,5 +1,5 @@
 import "server-only";
-import { getCmsPageBlocks } from "@/lib/cms";
+import { SITE_URL } from "@/lib/seo";
 
 /**
  * Emails liés aux demandes d'activation des avantages partenaires (ex.
@@ -149,44 +149,6 @@ export async function sendPartnerSignupStaffNotification(
   return { statut: "envoyee", destinataires: recipients, erreur: null };
 }
 
-/**
- * Convertit le corps (texte brut, syntaxe "- élément" pour les puces — même
- * convention que les blocs de texte du CMS) du bloc "avantages" en HTML
- * simple pour l'email. Ne gère pas le gras/liens du CMS : une liste à puces
- * suffit très largement pour ce contenu.
- */
-function simpleBodyToHtml(body: string): string {
-  const parts: string[] = [];
-  let inList = false;
-  for (const raw of body.split("\n")) {
-    const line = raw.trim();
-    const bullet = /^[-•]\s+(.*)/.exec(line);
-    if (bullet) {
-      if (!inList) {
-        parts.push('<ul style="margin:8px 0 16px;padding-left:20px;font-size:14px;line-height:1.6;">');
-        inList = true;
-      }
-      parts.push(`<li style="margin:2px 0;">${escapeHtml(bullet[1])}</li>`);
-    } else {
-      if (inList) {
-        parts.push("</ul>");
-        inList = false;
-      }
-      if (line) parts.push(`<p style="margin:8px 0;font-size:14px;line-height:1.6;">${escapeHtml(line)}</p>`);
-    }
-  }
-  if (inList) parts.push("</ul>");
-  return parts.join("\n");
-}
-
-/** Bloc "Vos avantages ..." de la page du partenaire, pour l'inclure dans l'email de confirmation. */
-async function findAvantagesBlockHtml(partenaire: string): Promise<string | null> {
-  const blocks = await getCmsPageBlocks(partenaire).catch(() => null);
-  const block = blocks?.find((b) => b.heading?.toLowerCase().includes("avantages"));
-  if (!block?.body?.trim()) return null;
-  return `<h2 style="margin:24px 0 8px;font-size:16px;text-transform:uppercase;letter-spacing:0.03em;">${escapeHtml(block.heading)}</h2>${simpleBodyToHtml(block.body)}`;
-}
-
 export interface MemberConfirmationInput {
   partenaire: string;
   nom: string;
@@ -207,17 +169,24 @@ export async function sendPartnerSignupMemberConfirmation(
     return { statut: "ignoree", destinataires: [input.email], erreur };
   }
 
-  const avantagesHtml = await findAvantagesBlockHtml(input.partenaire);
+  // Lien vers la page du partenaire sur le site (codes promos), construit
+  // depuis le slug pour valoir quel que soit le partenaire.
+  const partnerPageUrl = `${SITE_URL}/partenaires/${encodeURIComponent(input.partenaire)}`;
 
   const html = emailShell(`
     <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">
-      Tu as demandé à être ajouté sur le compte ${escapeHtml(label)}.
+      Bonjour ${escapeHtml(input.prenom)},
+    </p>
+    <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">
+      Tu as demandé à être ajouté sur le compte ${escapeHtml(label)} du TOAC Triathlon.
     </p>
     ${identityTable(input)}
-    <p style="margin:0 0 8px;font-size:16px;font-weight:bold;color:#0e9f6e;line-height:1.5;">
+    <p style="margin:0 0 24px;font-size:16px;font-weight:bold;color:#0e9f6e;line-height:1.5;">
       Ton avantage partenaire est activé. Tu peux désormais utiliser les codes promos du TOAC.
     </p>
-    ${avantagesHtml ?? ""}
+    <p style="margin:0;">
+      ${button(partnerPageUrl, "VOIR LES CODES", "#e6127a")}
+    </p>
   `);
 
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -229,9 +198,11 @@ export async function sendPartnerSignupMemberConfirmation(
       subject: `[TOAC] Partenariat ${label} — ${input.prenom} ${input.nom}`,
       htmlContent: html,
       textContent:
-        `Tu as demandé à être ajouté sur le compte ${label}.\n\n` +
+        `Bonjour ${input.prenom},\n\n` +
+        `Tu as demandé à être ajouté sur le compte ${label} du TOAC Triathlon.\n\n` +
         `Nom : ${input.nom}\nPrénom : ${input.prenom}\nEmail : ${input.email}\n\n` +
-        "Ton avantage partenaire est activé. Tu peux désormais utiliser les codes promos du TOAC.\n",
+        "Ton avantage partenaire est activé. Tu peux désormais utiliser les codes promos du TOAC.\n\n" +
+        `Voir les codes : ${partnerPageUrl}\n`,
     }),
   });
 

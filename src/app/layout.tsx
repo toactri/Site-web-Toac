@@ -5,7 +5,14 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AuthProvider from "@/components/AuthProvider";
-import { getCmsPageBlocks, getCmsCatalog, getCmsSiteSettings, getCmsNavigation } from "@/lib/cms";
+import {
+  getCmsPageBlocks,
+  getCmsCatalog,
+  getCmsSiteSettings,
+  getCmsNavigation,
+  getCmsPages,
+  partnerPageHrefResolver,
+} from "@/lib/cms";
 import { buildThemeCss } from "@/lib/theme";
 import { SITE_URL, SITE_NAME, DEFAULT_TITLE, DEFAULT_DESCRIPTION } from "@/lib/seo";
 
@@ -39,12 +46,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [cmsNavigation, footerBlocks, cmsCatalog, cmsSettings] = await Promise.all([
+  const [cmsNavigation, footerBlocks, cmsCatalog, cmsSettings, cmsPages] = await Promise.all([
     getCmsNavigation(),
     getCmsPageBlocks("footer"),
     getCmsCatalog(),
     getCmsSiteSettings(),
+    getCmsPages(),
   ]);
+  const partnerHrefFor = partnerPageHrefResolver(cmsPages);
   const partenairesSection = cmsCatalog?.find((s) => s.name === "Partenaires");
   const themeCss = buildThemeCss(cmsSettings?.theme);
 
@@ -66,6 +75,7 @@ export default async function RootLayout({
               footerBlocks={footerBlocks}
               footerItems={cmsNavigation.footer}
               partenairesSection={partenairesSection}
+              partnerHrefFor={partnerHrefFor}
               socialLinks={cmsSettings?.social_links}
               email={cmsSettings?.email}
             />

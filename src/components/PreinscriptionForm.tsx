@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { inputClass, labelClass } from "@/components/formStyles";
 
-const inputClass =
-  "w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30";
-const labelClass = "mb-1 block text-sm font-medium text-toac-blue-900";
 const fieldsetClass = "rounded-md border border-toac-gray-200 p-4";
 const legendClass = "px-1 text-sm font-medium text-toac-blue-900";
 const radioRowClass = "flex items-start gap-2 text-sm text-toac-blue-900";

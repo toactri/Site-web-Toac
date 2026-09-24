@@ -5,6 +5,7 @@
 // éditables sur place (contentEditable) — la modification est envoyée à la
 // fenêtre parente (le dashboard) qui l'enregistre en base, sans quitter l'aperçu.
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   createElement,
@@ -334,25 +335,38 @@ export function CmsEditableText({
 }
 
 /**
- * Nom de partenaire éditable, devenant un lien hypertexte vers son site web
- * dès qu'une URL est renseignée côté CMS (champ "Site web" du produit). Hors
- * mode édition uniquement : en édition, on garde le texte simplement
- * modifiable pour ne pas imbriquer un <a> autour d'un contentEditable.
+ * Nom de partenaire éditable, devenant un lien hors mode édition : vers la
+ * page du partenaire sur le site si `href` est fourni (elle présente les
+ * avantages puis renvoie vers le partenaire), sinon vers son site web dès
+ * qu'une URL est renseignée côté CMS (champ "Site web" du produit). En
+ * édition, on garde le texte simplement modifiable pour ne pas imbriquer un
+ * <a> autour d'un contentEditable.
  */
 export function CmsPartnerName({
   value,
   url,
+  href,
   target,
   as = "span",
   className = "",
 }: {
   value: string;
   url?: string | null;
+  /** Lien interne prioritaire sur `url` (page /partenaires/<slug>). */
+  href?: string;
   target: InlineTarget;
   as?: "span" | "div" | "h3";
   className?: string;
 }) {
   const editMode = useCmsEditMode();
+
+  if (!editMode && href) {
+    return (
+      <Link href={href} className={className}>
+        {value}
+      </Link>
+    );
+  }
 
   if (!editMode && url) {
     return (

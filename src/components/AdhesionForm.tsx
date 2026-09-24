@@ -11,10 +11,7 @@ import {
   type LicenceType,
 } from "@/content/tarifs";
 import { CmsEditableText, CmsEditPencil } from "@/components/cms-edit";
-
-const inputClass =
-  "w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30";
-const labelClass = "mb-1 block text-sm font-medium text-toac-blue-900";
+import { inputClass, labelClass } from "@/components/formStyles";
 
 function euros(centimes: number): string {
   return `${(centimes / 100).toFixed(2).replace(".", ",")} €`;

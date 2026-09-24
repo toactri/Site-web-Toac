@@ -16,6 +16,7 @@
 // est borné par les règles RLS définies côté Supabase.
 
 import type { NavItem, NavLink } from "@/lib/nav";
+import { slugify } from "@/lib/slug";
 
 /** Valeur d'environnement si elle est renseignée, sinon le repli fourni. */
 function fromEnv(name: string, fallback: string): string {
@@ -207,6 +208,20 @@ export type CmsPage = {
 export async function getCmsPages(): Promise<CmsPage[] | null> {
   const rows = await fetchFromCms<CmsPage>("pages", "&select=slug,title");
   return rows && rows.length ? rows : null;
+}
+
+/**
+ * Lien interne vers la page d'un partenaire (/partenaires/<slug>), seulement
+ * si une page CMS porte ce slug — sinon undefined, et l'appelant garde le
+ * lien externe. Les partenaires institutionnels (FFTRI, Mairie…) n'ont pas
+ * de page : les lier en interne mènerait à un 404.
+ */
+export function partnerPageHrefResolver(pages: CmsPage[] | null): (name: string) => string | undefined {
+  const slugs = new Set(pages?.map((p) => p.slug) ?? []);
+  return (name) => {
+    const slug = slugify(name);
+    return slug && slugs.has(slug) ? `/partenaires/${slug}` : undefined;
+  };
 }
 
 export type CmsHiddenBlock = { slot: string | null; heading: string; block_type: string };

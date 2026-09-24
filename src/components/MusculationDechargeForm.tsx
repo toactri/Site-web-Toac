@@ -6,13 +6,11 @@ import { isMineur } from "@/lib/age";
 import { compressImageFile } from "@/lib/imageCompression";
 import { materializeFile, FileUnreadableError } from "@/lib/clientFiles";
 import { MAX_UPLOAD_TOTAL_BYTES, formatBytes } from "@/lib/uploadLimits";
+import { inputClass, labelClass } from "@/components/formStyles";
 
 /** Au-delà, on abandonne l'envoi plutôt que de laisser l'adhérent attendre. */
 const REQUEST_TIMEOUT_MS = 90_000;
 
-const inputClass =
-  "w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30";
-const labelClass = "mb-1 block text-sm font-medium text-toac-blue-900";
 const fileInputClass =
   "w-full text-sm text-toac-blue-900 file:mr-3 file:rounded-md file:border-0 file:bg-toac-blue-950 file:px-4 file:py-2 file:text-sm file:text-white";
 

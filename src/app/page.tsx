@@ -4,7 +4,7 @@ import SiteImage from "@/components/SiteImage";
 import InstagramFeed from "@/components/InstagramFeed";
 import { PARTENAIRES, PARTENAIRES_INSTITUTIONNELS } from "@/content/partenaires";
 import { INSTAGRAM } from "@/content/instagram";
-import { getCmsPageBlocks, getCmsCatalog, getCmsHiddenBlocks } from "@/lib/cms";
+import { getCmsPageBlocks, getCmsCatalog, getCmsHiddenBlocks, getCmsPages, partnerPageHrefResolver } from "@/lib/cms";
 import { CmsEditableText, CmsEditableImage, CmsEditPencil, CmsPartnerName } from "@/components/cms-edit";
 import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlocks";
 import { slugify } from "@/lib/slug";
@@ -55,11 +55,13 @@ const CARDS = [
 ];
 
 export default async function HomePage() {
-  const [cmsBlocks, cmsCatalog, hiddenBlocks] = await Promise.all([
+  const [cmsBlocks, cmsCatalog, hiddenBlocks, cmsPages] = await Promise.all([
     getCmsPageBlocks("accueil"),
     getCmsCatalog(),
     getCmsHiddenBlocks("accueil"),
+    getCmsPages(),
   ]);
+  const partnerHrefFor = partnerPageHrefResolver(cmsPages);
 
   // Le titre "Le club en 3 temps" a son propre emplacement fixe et ne doit
   // pas compter dans l'indexation positionnelle ci-dessous (hero, cartes,
@@ -268,6 +270,7 @@ export default async function HomePage() {
                       as="span"
                       value={p.name}
                       url={p.url}
+                      href={partnerHrefFor(p.name)}
                       target={{ kind: "product", id: p.id, field: "name" }}
                       className="text-center font-display text-sm uppercase text-toac-blue-900/70 hover:text-toac-blue-950"
                     />

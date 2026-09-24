@@ -5,7 +5,7 @@ import { slugify } from "@/lib/slug";
 import { pageMetadata, privatePageMetadata, toMetaDescription } from "@/lib/seo";
 import { CmsPageBlocks } from "@/components/CmsPageBlocks";
 import { CmsEditableImage } from "@/components/cms-edit";
-import AlltricksSignupForm from "@/components/AlltricksSignupForm";
+import AlltricksSignupForm, { AlltricksSignupConfirmation } from "@/components/AlltricksSignupForm";
 
 export async function generateMetadata({
   params,
@@ -62,9 +62,16 @@ export default async function PartenairePage({
   // privilégie toujours celle qui a un logo, peu importe l'ordre.
   const matchingPartners = cmsCatalog?.flatMap((section) => section.products).filter((p) => slugify(p.name) === slug) ?? [];
   const partner = matchingPartners.find((p) => p.image_url) ?? matchingPartners[0];
+  const hasSignupForm = slug === "alltricks";
+  const signupSent = hasSignupForm && merci === "1";
 
   return (
     <div className="pb-16">
+      {signupSent && (
+        <div className="mx-auto max-w-4xl px-4 pt-6 sm:px-6 lg:px-8">
+          <AlltricksSignupConfirmation />
+        </div>
+      )}
       <div className="border-b border-toac-gray-200 bg-toac-gray-50">
         <div className="mx-auto flex flex-col items-center gap-5 px-4 py-14 text-center sm:px-6 lg:px-8">
           {partner?.image_url && (
@@ -101,9 +108,9 @@ export default async function PartenairePage({
         }
       />
 
-      {slug === "alltricks" && (
+      {hasSignupForm && !signupSent && (
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <AlltricksSignupForm showConfirmation={merci === "1"} />
+          <AlltricksSignupForm />
         </div>
       )}
     </div>
