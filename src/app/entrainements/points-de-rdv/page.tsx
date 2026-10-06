@@ -4,7 +4,9 @@ import { Suspense } from "react";
 import LieuxMap from "@/components/LieuxMap";
 import SiteImage from "@/components/SiteImage";
 import { LIEUX } from "@/content/lieux";
-import { getCmsPageBlocks, getCmsCatalog } from "@/lib/cms";
+import { getCmsPageBlocks, getCmsCatalog, getCmsTrainingSessions } from "@/lib/cms";
+import { renderRichText } from "@/lib/rich-text";
+import { locationSlotsList } from "@/lib/training";
 import { CmsEditableText, CmsEditableImage, CmsAddTile } from "@/components/cms-edit";
 
 export const metadata: Metadata = pageMetadata({
@@ -37,9 +39,10 @@ function normalizeName(name: string): string {
 }
 
 export default async function PointsDeRdvPage() {
-  const [cmsBlocks, cmsCatalog] = await Promise.all([
+  const [cmsBlocks, cmsCatalog, trainingSessions] = await Promise.all([
     getCmsPageBlocks("ou-et-quand"),
     getCmsCatalog(),
+    getCmsTrainingSessions(),
   ]);
   // Le visuel de la liste par défaut (LIEUX) est géré comme ses coordonnées
   // GPS : via un produit du même nom dans le Catalogue (Dashboard →
@@ -94,6 +97,17 @@ export default async function PointsDeRdvPage() {
                   multiline
                   className="mt-2 block whitespace-pre-line text-sm text-toac-blue-900/80"
                 />
+                {/* Créneaux tirés du Planning (créneaux liés à cette fiche par
+                    son ancre) : jamais recopiés dans le texte de la fiche. */}
+                {(() => {
+                  const slots = locationSlotsList(trainingSessions, block.anchor);
+                  return slots ? (
+                    <div className="mt-3 text-sm text-toac-blue-900/80">
+                      <p className="font-bold">Créneaux :</p>
+                      <div className="space-y-1">{renderRichText(slots)}</div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             ))
           : LIEUX.map((lieu) => (

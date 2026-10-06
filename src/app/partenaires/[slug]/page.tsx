@@ -4,7 +4,7 @@ import { getCmsPages, getCmsCatalog } from "@/lib/cms";
 import { slugify } from "@/lib/slug";
 import { pageMetadata, privatePageMetadata, toMetaDescription } from "@/lib/seo";
 import { CmsPageBlocks } from "@/components/CmsPageBlocks";
-import { CmsEditableImage } from "@/components/cms-edit";
+import { CmsEditableImage, CmsEditableText } from "@/components/cms-edit";
 import AlltricksSignupForm, { AlltricksSignupConfirmation } from "@/components/AlltricksSignupForm";
 
 export async function generateMetadata({
@@ -98,6 +98,24 @@ export default async function PartenairePage({
           )}
         </div>
       </div>
+
+      {/* Avantage adhérents : champ de la fiche partenaire (dashboard →
+          Partenaires), le même que celui de l'espace adhérents — pas de
+          bloc de texte à tenir à jour en double sur cette page. */}
+      {partner?.member_benefits?.trim() && (
+        <section className="mx-auto max-w-4xl px-4 pt-12 sm:px-6 lg:px-8">
+          <h2 className="section-title font-display text-2xl uppercase text-toac-blue-950">
+            Avantages adhérents TOAC
+          </h2>
+          <CmsEditableText
+            as="div"
+            value={partner.member_benefits}
+            target={{ kind: "product", id: partner.id, field: "member_benefits" }}
+            multiline
+            className="mt-6 block space-y-4 whitespace-pre-line text-toac-blue-900/90"
+          />
+        </section>
+      )}
 
       <CmsPageBlocks
         slug={slug}

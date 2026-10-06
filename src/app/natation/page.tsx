@@ -5,7 +5,8 @@ import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlo
 import { CmsEditableText, CmsEditableImage, CmsEditPencil, CmsAddTile } from "@/components/cms-edit";
 import AccordionBlock from "@/components/AccordionBlock";
 import { renderRichText } from "@/lib/rich-text";
-import { getCmsPageBlocks, getCmsHiddenBlocks, type CmsPageBlock } from "@/lib/cms";
+import { getCmsPageBlocks, getCmsHiddenBlocks, getCmsTrainingSessions, type CmsPageBlock } from "@/lib/cms";
+import { sportSlotsTableWithLocation } from "@/lib/training";
 import { REGLEMENT_ARTICLES } from "@/content/reglement-interieur";
 import { slugify } from "@/lib/slug";
 
@@ -72,10 +73,15 @@ function TextSection({ slot, block }: { slot: string; block?: CmsPageBlock }) {
 }
 
 export default async function NatationPage() {
-  const [cmsBlocks, hiddenBlocks] = await Promise.all([
+  const [cmsBlocks, hiddenBlocks, trainingSessions] = await Promise.all([
     getCmsPageBlocks("natation"),
     getCmsHiddenBlocks("natation"),
+    getCmsTrainingSessions(),
   ]);
+  // Jours, horaires et piscines viennent du Planning (dashboard → Planning) :
+  // le bloc "Organisation" ne garde que ce qui est propre à la natation
+  // (lignes d'eau, capacités, règles), sans recopier les horaires.
+  const creneauxTable = sportSlotsTableWithLocation(trainingSessions, "natation");
 
   const hiddenSlots = new Set(hiddenBlocks.map((b) => b.slot).filter(Boolean));
   const blockBySlot = new Map((cmsBlocks ?? []).filter((b) => b.slot).map((b) => [b.slot as string, b]));
@@ -121,6 +127,12 @@ export default async function NatationPage() {
           )}
 
           <TextSection slot={INSCRIPTION_SLOT} block={inscriptionBlock} />
+          {creneauxTable && (
+            <section id="natation-creneaux" className="scroll-mt-24 border-t border-toac-gray-200 pt-8">
+              <h2 className="font-display text-lg uppercase text-toac-blue-950">Créneaux</h2>
+              <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">{renderRichText(creneauxTable)}</div>
+            </section>
+          )}
           <TextSection slot={ORGANISATION_SLOT} block={organisationBlock} />
 
           {extraBlocks.map((block) =>
