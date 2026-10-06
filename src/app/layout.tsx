@@ -1,3 +1,5 @@
+import { CmsVariablesProvider } from "@/components/CmsVariablesProvider";
+import { buildCmsVariables } from "@/lib/cms-variables";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Anton, Inter } from "next/font/google";
@@ -56,6 +58,7 @@ export default async function RootLayout({
   const partnerHrefFor = partnerPageHrefResolver(cmsPages);
   const partenairesSection = cmsCatalog?.find((s) => s.name === "Partenaires");
   const themeCss = buildThemeCss(cmsSettings?.theme);
+  const cmsVariables = buildCmsVariables(cmsSettings, cmsCatalog);
 
   return (
     <html lang="fr" className={`${anton.variable} ${inter.variable} h-full antialiased`}>
@@ -66,6 +69,7 @@ export default async function RootLayout({
       )}
       <body className="flex min-h-full flex-col bg-white text-toac-blue-950">
         <AuthProvider>
+          <CmsVariablesProvider value={cmsVariables}>
           <Suspense fallback={null}>
             <Navbar items={cmsNavigation.nav} />
           </Suspense>
@@ -80,6 +84,7 @@ export default async function RootLayout({
               email={cmsSettings?.email}
             />
           </Suspense>
+          </CmsVariablesProvider>
         </AuthProvider>
       </body>
     </html>

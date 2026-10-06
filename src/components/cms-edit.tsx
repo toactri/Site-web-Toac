@@ -18,6 +18,8 @@ import {
 } from "react";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { linkifyText, renderRichText } from "@/lib/rich-text";
+import { applyCmsVariables } from "@/lib/cms-variables";
+import { useCmsVariables } from "@/components/CmsVariablesProvider";
 
 export function useCmsEditMode(): boolean {
   const searchParams = useSearchParams();
@@ -119,13 +121,17 @@ export function CmsEditableText({
   multiline?: boolean;
 }) {
   const editMode = useCmsEditMode();
+  const variables = useCmsVariables();
   const elRef = useRef<HTMLElement>(null);
   // Un <ul> (liste à puces) n'est pas un contenu valide dans un <p> : dès que
   // multiline est activé, on rend toujours un <div>, quel que soit `as`.
   const tag = multiline && as === "p" ? "div" : as;
 
   if (!editMode) {
-    return createElement(tag, { className }, multiline ? renderRichText(value) : value);
+    // {{variables}} remplacées à l'affichage seulement : en mode édition, le
+    // texte brut reste affiché pour ne jamais écraser la variable en base.
+    const shown = applyCmsVariables(value, variables);
+    return createElement(tag, { className }, multiline ? renderRichText(shown) : shown);
   }
 
   function handleBlur(e: FocusEvent<HTMLElement>) {
