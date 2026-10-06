@@ -36,8 +36,7 @@ Tant que vous n'avez pas importé vos propres comptes (voir § 4), deux comptes 
 1. Poussez ce dépôt sur GitHub.
 2. Sur [vercel.com](https://vercel.com), importez le dépôt (le framework Next.js est détecté automatiquement).
 3. Dans **Settings → Environment Variables**, renseignez toutes les variables listées dans `.env.example`
-   (`SESSION_SECRET`, `MONETICO_TPE`, `MONETICO_CODE_SOCIETE`, `MONETICO_CLE_HMAC`, `MONETICO_URL_RETOUR`,
-   `MONETICO_TEST_MODE`, et éventuellement `BREVO_API_KEY` / `BREVO_FROM_EMAIL`).
+   (`SESSION_SECRET`, et éventuellement `BREVO_API_KEY` / `BREVO_FROM_EMAIL`).
 4. Déployez. Le plan gratuit ("Hobby") de Vercel suffit pour ce site.
 
 Important : `src/data/members.json` et `src/data/accounts.json` (les vraies données adhérents) sont
@@ -57,15 +56,12 @@ ignorés par git — ils ne seront donc **pas** présents sur Vercel après un d
 | --- | --- | --- |
 | ~~`LOGO_TOAC`~~ | `public/logo-toac.png` | ✅ Fait — logo officiel intégré dans la Navbar et le Footer. |
 | Photos (📷) | `src/components/ImagePlaceholder.tsx`, utilisé sur toutes les pages | Remplacer chaque `<ImagePlaceholder>` par un `<Image>` `next/image` pointant vers les vraies photos du club. |
-| `TARIFS_A_CONFIRMER` | `src/content/tarifs.ts`, `src/content/faq.ts` | Mettre à jour les montants (en centimes) une fois confirmés par le bureau. |
 | `URL_INSCRIPTION_TDL` | `src/app/triathlons-du-lauragais/page.tsx` (lien "S'inscrire à la course") | Remplacer le `href="#"` par l'URL d'inscription officielle. |
 | `LIEN_COMMANDE_TENUES` | `src/app/le-club/vie-du-club/page.tsx` | Remplacer par le lien réel de commande des tenues. |
 | Documents PDF | `src/app/espace-adherents/documents/page.tsx` | Remplacer les `href="#"` par les vrais fichiers (à héberger dans `public/documents/` par ex.). |
 | Coordonnées des lieux | `src/content/lieux.ts` | Les latitudes/longitudes sont des approximations ; à vérifier/ajuster précisément si besoin. |
-| Variables Monetico | `.env` (Vercel ou local) | Voir § 5. |
 | `DATABASE_URL` | `.env` (Vercel ou local) | Voir § 5bis. |
 | `BREVO_API_KEY` | `.env` | Voir § 6. |
-| Champs du formulaire d'adhésion | `src/components/AdhesionForm.tsx` | Les champs proposés (état civil, contact d'urgence, certificat médical…) sont ceux d'un bulletin d'adhésion classique de club de triathlon. Le Google Form externe n'étant pas accessible publiquement pour être recopié à l'identique, ajustez les champs ici si le bureau utilise des intitulés différents. |
 
 ## 4. Importer les adhérents (CSV) et gérer les comptes
 
@@ -118,31 +114,12 @@ la base (visible dans **Bureau → Dossiers adhérents**). `bulk-from-members` a
 les identifiants générés à transmettre aux adhérents (rien n'est jamais stocké en clair : seul le hash
 bcrypt est écrit dans `accounts.json`).
 
-## 5. Paiement en ligne Monetico
+## 5. Paiement en ligne (retiré)
 
-Le parcours d'adhésion (page **Nous rejoindre**) construit un formulaire de paiement scellé (HMAC-SHA1) côté
-serveur (`src/lib/monetico.ts`), sans jamais exposer la clé secrète au navigateur.
-
-Le formulaire d'adhésion est **unique** : informations, choix du tarif (plein ou réduit, avec justificatif
-si besoin) et paiement (cotisation + caution de 100€ obligatoire, prélevés ensemble) en une seule étape.
-L'inscription (table `inscriptions`/`members`) est enregistrée dès l'envoi, mais le dossier n'est marqué
-**payé** (`paiement` + `caution` cochés automatiquement) qu'à réception de la confirmation Monetico — c'est
-la notification serveur-à-serveur qui valide réellement l'adhésion, pas le simple envoi du formulaire.
-
-1. Récupérez dans l'espace commerçant Monetico du club : `TPE`, code société, clé HMAC.
-2. Renseignez `MONETICO_TPE`, `MONETICO_CODE_SOCIETE`, `MONETICO_CLE_HMAC`, `MONETICO_URL_RETOUR` (URL de
-   base de votre site) dans vos variables d'environnement.
-3. Laissez `MONETICO_TEST_MODE=true` pour valider le parcours sur la plateforme de test Monetico.
-4. Dans l'espace commerçant Monetico, configurez l'**URL de notification serveur-à-serveur (IPN)** vers :
-   `https://votre-domaine/api/monetico/retour`.
-5. Une fois validé en test, passez `MONETICO_TEST_MODE=false` (ou supprimez la variable) pour la production.
-
-Les montants (plein tarif, tarif réduit, caution, stages) sont dans `src/content/tarifs.ts` — à ajuster
-une fois confirmés par le bureau.
-
-⚠️ L'ordre exact des champs du retour Monetico (fonction `verifyReturnSeal`) doit être confirmé avec la
-documentation fournie par Monetico avant la mise en production réelle (voir le commentaire dans
-`src/lib/monetico.ts`).
+Le parcours d'adhésion + paiement Monetico a été retiré du site en octobre 2026 : l'inscription passe par
+un Google Form et le paiement par l'espace FFTRI. Le code complet reste récupérable dans l'historique git
+(commit `c2b5880`, dernier état avant suppression) ; voir aussi le document d'archive « Paiement en ligne —
+archive 2026 et réflexion 2027 ».
 
 ### Justificatif tarif réduit (Vercel Blob)
 

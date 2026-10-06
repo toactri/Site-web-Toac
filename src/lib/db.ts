@@ -4,11 +4,10 @@ import type { Member, MemberDossier, MemberStatus } from "./types";
 /**
  * Base de données Postgres (Neon, Vercel Postgres, Supabase… n'importe quel
  * Postgres standard convient) utilisée pour stocker automatiquement :
- *  - les commandes de paiement Monetico (table `commandes`), reçues via
- *    la notification serveur-à-serveur (IPN) — voir
- *    src/app/api/monetico/retour/route.ts ;
- *  - les inscriptions du formulaire d'adhésion en ligne (table
- *    `inscriptions`) — voir src/app/api/adhesion/route.ts.
+ *  - les tables `commandes` et `inscriptions` de l'ancien parcours
+ *    d'adhésion + paiement Monetico, retiré du site en octobre 2026 : elles
+ *    sont conservées en base pour l'historique (code récupérable dans git,
+ *    commit c2b5880).
  *
  * Configuration : renseignez DATABASE_URL (chaîne de connexion Postgres,
  * ex. fournie par Vercel/Neon, Supabase…) dans les variables d'environnement.
@@ -493,80 +492,6 @@ export async function deletePartnerSignup(id: number): Promise<void> {
 }
 
 
-export interface CommandeRow {
-  id: number;
-  reference: string;
-  recu_le: string;
-  date_paiement: string | null;
-  email: string | null;
-  montant_centimes: number | null;
-  devise: string | null;
-  statut: string;
-  code_retour: string | null;
-  marque_carte: string | null;
-  numero_autorisation: string | null;
-  texte_libre: string | null;
-  brut: Record<string, string>;
-}
-
-export interface NouvelleCommande {
-  reference: string;
-  datePaiement: string | null;
-  email: string | null;
-  montantCentimes: number | null;
-  devise: string | null;
-  statut: string;
-  codeRetour: string | null;
-  marqueCarte: string | null;
-  numeroAutorisation: string | null;
-  texteLibre: string | null;
-  brut: Record<string, string>;
-}
-
-/** Enregistre (ou met à jour) une commande reçue via l'IPN Monetico. */
-export async function upsertCommande(commande: NouvelleCommande): Promise<void> {
-  await ensureSchema();
-  await getPool().query(
-    `
-    INSERT INTO commandes (
-      reference, date_paiement, email, montant_centimes, devise, statut,
-      code_retour, marque_carte, numero_autorisation, texte_libre, brut
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-    ON CONFLICT (reference) DO UPDATE SET
-      date_paiement = EXCLUDED.date_paiement,
-      email = EXCLUDED.email,
-      montant_centimes = EXCLUDED.montant_centimes,
-      devise = EXCLUDED.devise,
-      statut = EXCLUDED.statut,
-      code_retour = EXCLUDED.code_retour,
-      marque_carte = EXCLUDED.marque_carte,
-      numero_autorisation = EXCLUDED.numero_autorisation,
-      texte_libre = EXCLUDED.texte_libre,
-      brut = EXCLUDED.brut
-    `,
-    [
-      commande.reference,
-      commande.datePaiement,
-      commande.email,
-      commande.montantCentimes,
-      commande.devise,
-      commande.statut,
-      commande.codeRetour,
-      commande.marqueCarte,
-      commande.numeroAutorisation,
-      commande.texteLibre,
-      JSON.stringify(commande.brut),
-    ]
-  );
-}
-
-export async function getCommandes(): Promise<CommandeRow[]> {
-  await ensureSchema();
-  const { rows } = await getPool().query<CommandeRow>(
-    "SELECT * FROM commandes ORDER BY recu_le DESC"
-  );
-  return rows;
-}
 
 export interface MusculationDechargeRow {
   id: number;

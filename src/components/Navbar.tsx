@@ -10,7 +10,6 @@ const BUREAU_ITEM: NavItem = {
   label: "Bureau",
   children: [
     { label: "Dossiers adhérents", href: "/espace-adherents/bureau" },
-    { label: "Commandes Monetico", href: "/espace-adherents/bureau/commandes" },
     { label: "Demandes d'adhésion", href: "/espace-adherents/bureau/inscriptions" },
     { label: "Pré-inscriptions", href: "/espace-adherents/bureau/preinscriptions" },
     { label: "Avantages partenaires", href: "/espace-adherents/bureau/partenaires" },

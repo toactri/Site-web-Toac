@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { insertPreinscription, DatabaseNotConfiguredError } from "@/lib/db";
-import { buildErrorHtml } from "@/lib/monetico";
+import { buildErrorHtml } from "@/lib/errorHtml";
 
 /**
  * Étape 1 du parcours d'adhésion : pré-inscription (reprend les questions du

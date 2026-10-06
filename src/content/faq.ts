@@ -27,14 +27,14 @@ export const FAQ_ITEMS: FaqItem[] = [
     categorie: "Adhésion",
     question: "Comment se passe l'adhésion et l'inscription ?",
     reponse:
-      "L'adhésion se fait via un formulaire à remplir puis un paiement en ligne sécurisé (Monetico), avant la demande de licence FFTRI. Retrouvez toutes les étapes sur la page « Nous rejoindre ».",
+      "L'adhésion se fait via un formulaire de pré-adhésion, puis la demande de licence et le paiement sur l'espace FFTRI. Retrouvez toutes les étapes sur la page « Adhésion ».",
   },
   {
     id: "documents",
     categorie: "Adhésion",
     question: "Quels sont les documents à fournir ?",
     reponse:
-      "Le formulaire d'adhésion, le paiement en ligne Monetico, un chèque de caution (bénévolat aux Triathlons du Lauragais), le questionnaire ou certificat médical selon les règles FFTRI, et une décharge signée si vous souhaitez accéder à la musculation.",
+      "Le formulaire de pré-adhésion, le paiement sur l'espace FFTRI (cotisation et dépôt de garantie inclus) (bénévolat aux Triathlons du Lauragais), le questionnaire ou certificat médical selon les règles FFTRI, et une décharge signée si vous souhaitez accéder à la musculation.",
   },
   {
     id: "tarifs",

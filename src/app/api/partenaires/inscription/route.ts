@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import crypto from "node:crypto";
 import { insertPartnerSignup, DatabaseNotConfiguredError } from "@/lib/db";
-import { buildErrorHtml } from "@/lib/monetico";
+import { buildErrorHtml } from "@/lib/errorHtml";
 import { notifyStaffAndRecord } from "@/lib/partnerSignupNotify";
 import { checkFormSubmission } from "@/lib/formGuard";
 

@@ -26,14 +26,13 @@ export const WATCHED_VARS: { name: string; role: string }[] = [
     name: "PARTNER_SIGNUP_NOTIFICATION_EMAILS",
     role: "Destinataires de la notification partenariat (responsable partenariat)",
   },
-  { name: "MONETICO_CLE_HMAC", role: "Paiement en ligne Monetico" },
   { name: "CMS_SUPABASE_URL", role: "Projet Supabase servant le contenu CMS (repli : projet Devanture)" },
   { name: "CMS_SITE_ID", role: "Identifiant du site dans le CMS (repli : site TOAC sur Devanture)" },
 ];
 
 /** Noms de variables affichés dans la liste « ce que reçoit le runtime ». */
 const NAME_FILTER =
-  /BLOB|STORE|POSTGRES|DATABASE|VERCEL|NETLIFY|MONETICO|BREVO|SESSION_SECRET|^ADMIN_|MUSCULATION|PARTNER|^CMS_/i;
+  /BLOB|STORE|POSTGRES|DATABASE|VERCEL|NETLIFY|BREVO|SESSION_SECRET|^ADMIN_|MUSCULATION|PARTNER|^CMS_/i;
 
 export interface VarInfo {
   name: string;

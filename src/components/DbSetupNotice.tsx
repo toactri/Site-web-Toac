@@ -5,7 +5,7 @@ export default function DbSetupNotice() {
       <p className="mt-2 text-sm">
         Renseignez la variable d&apos;environnement <code className="rounded bg-white/60 px-1">DATABASE_URL</code>{" "}
         (voir <code className="rounded bg-white/60 px-1">.env.example</code> et le README, section base de
-        données) pour activer l&apos;enregistrement automatique des commandes Monetico et des demandes
+        données) pour activer l&apos;enregistrement automatique des demandes
         d&apos;adhésion.
       </p>
     </div>

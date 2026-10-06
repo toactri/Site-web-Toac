@@ -68,11 +68,10 @@ export default async function BureauDossiersPage() {
         </>
       )}
 
-      {/* Commandes Monetico, Demandes d'adhésion et Pré-inscriptions ne sont
-          pas proposées ici : Monetico n'est pas en service, et les adhésions
-          de la saison sont suivies hors du site. Les pages correspondantes
-          restent en place, prêtes à être remises dans cette liste le jour où
-          ces parcours reprendront. */}
+      {/* Demandes d'adhésion et Pré-inscriptions ne sont pas proposées ici :
+          les adhésions de la saison sont suivies hors du site (Google Form +
+          paiement sur l'espace FFTRI). Le paiement en ligne Monetico a été
+          retiré du code en octobre 2026 (voir l'historique git). */}
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
           href="/espace-adherents/bureau/partenaires"

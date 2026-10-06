@@ -15,7 +15,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 const ETAPES = [
-  "Remplir le formulaire d'adhésion et payer en ligne (cotisation + caution, paiement sécurisé Monetico)",
+  "Remplir le formulaire de pré-adhésion",
   "Demande de licence FFTRI",
   "Rejoindre les listes Google et la communauté WhatsApp du club",
   "Commander sa trifonction TOAC",
