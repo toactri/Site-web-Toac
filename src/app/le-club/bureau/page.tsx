@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import SiteImage from "@/components/SiteImage";
 import { slugify } from "@/lib/slug";
 import { BUREAU_2026, PRESIDENT_HONNEUR, COACHS } from "@/content/bureau";
+import { DISCIPLINE_LABELS, type Discipline } from "@/content/planning";
 import { getCmsCatalog, getCmsPageBlocks } from "@/lib/cms";
 import { CmsEditableText, CmsEditableImage, CmsEditPencil, CmsAddTile } from "@/components/cms-edit";
 import EnsureCmsProduct from "@/components/EnsureCmsProduct";
@@ -203,6 +204,14 @@ export default async function BureauPage() {
                     target={{ kind: "product", id: c.id, field: "name" }}
                     className="font-medium text-toac-blue-950"
                   />
+                  {/* Sports cochés sur la fiche (dashboard → Catalogue →
+                      Encadrement sportif) : même donnée que la liste des
+                      encadrants de chaque page de sport. */}
+                  {c.sports && c.sports.length > 0 && (
+                    <div className="text-sm text-toac-blue-900/70">
+                      {c.sports.map((sp) => DISCIPLINE_LABELS[sp as Discipline] ?? sp).join(" + ")}
+                    </div>
+                  )}
                   <CmsEditableText
                     as="div"
                     value={c.description}

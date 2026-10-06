@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import MusculationDechargeForm from "@/components/MusculationDechargeForm";
 import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlocks";
 import { CmsEditableText, CmsAddTile } from "@/components/cms-edit";
 import AccordionBlock from "@/components/AccordionBlock";
 import { renderRichText } from "@/lib/rich-text";
-import { getCmsPageBlocks, getCmsHiddenBlocks, type CmsPageBlock } from "@/lib/cms";
+import {
+  getCmsCatalog,
+  getCmsPageBlocks,
+  getCmsHiddenBlocks,
+  getCmsTrainingSessions,
+  type CmsPageBlock,
+} from "@/lib/cms";
+import { coachesForSport, weeklySlotsTable } from "@/lib/training";
 import { slugify } from "@/lib/slug";
 
 // Page pas encore reliée au menu (voir src/lib/nav.ts) : elle reste accessible
@@ -29,11 +36,46 @@ const DECHARGE_SLOT = "musculation-decharge";
 const CALENDRIER_URL =
   "https://www.idosport.app/calendrier-partage/visualiser/lYzH6pXCPzSlQf-QWn0VoSSvi98/restricted";
 
+// Clé du sport dans le planning (dashboard → Planning) et dans les sports
+// encadrés des fiches "Encadrement sportif".
+const SPORT = "muscu";
+
+// Ancien bloc "Encadrants" (liste de noms tapée à la main) : la liste vient
+// désormais des fiches encadrants cochées "Musculation". Ce slot est ignoré
+// s'il traîne encore en base, pour ne pas réafficher l'ancienne liste.
+const RETIRED_SLOTS = new Set([ENCADRANTS_SLOT]);
+
 /**
- * Contenu de départ de chaque section. Il sert deux fois : à l'affichage tant
- * qu'aucun bloc CMS n'existe, et comme contenu initial des blocs créés
- * automatiquement à l'ouverture de l'aperçu dans le dashboard (EnsureCmsBlocks).
- * Une fois les blocs créés, tout se modifie depuis le CMS.
+ * Repli quand le CMS est injoignable : horaires et encadrants à date. En
+ * temps normal, les deux viennent des données structurées du CMS (planning
+ * et fiches encadrants), jamais d'un texte recopié.
+ */
+const FALLBACK_CRENEAUX_TABLE = [
+  "| Jour | Horaires |",
+  "| --- | --- |",
+  "| Lundi | 7h – 9h |",
+  "| Mardi | 7h – 9h et 12h – 14h |",
+  "| Mercredi | 7h – 9h |",
+  "| Jeudi | 7h – 9h, 13h – 14h et 18h – 19h |",
+  "| Samedi | 9h30 – 11h |",
+].join("\n");
+const FALLBACK_ENCADRANTS = [
+  "François Perrineau",
+  "Hugo Prézelin",
+  "Billton Vitus",
+  "Aurélie Vannutelli",
+  "Anne Larribe",
+  "Damien Martins",
+];
+
+/**
+ * Contenu de départ de chaque section de texte. Il sert deux fois : à
+ * l'affichage tant qu'aucun bloc CMS n'existe, et comme contenu initial des
+ * blocs créés automatiquement à l'ouverture de l'aperçu dans le dashboard
+ * (EnsureCmsBlocks). Une fois les blocs créés, tout se modifie depuis le CMS.
+ *
+ * Le tableau des créneaux n'en fait pas partie : il est généré à partir du
+ * planning et affiché au-dessus du texte du bloc "Créneaux".
  *
  * La syntaxe suit celle des autres pages (voir src/lib/rich-text.ts) : tableau
  * façon Markdown, « - » en début de ligne pour une puce, **gras**, et
@@ -42,28 +84,7 @@ const CALENDRIER_URL =
 const DEFAULT_SECTIONS: Record<string, { heading: string; body: string }> = {
   [CRENEAUX_SLOT]: {
     heading: "Créneaux",
-    body: [
-      "| Jour | Horaires |",
-      "| --- | --- |",
-      "| Lundi | 7h – 9h |",
-      "| Mardi | 7h – 9h et 12h45 – 14h |",
-      "| Mercredi | 7h – 9h |",
-      "| Jeudi | 7h – 9h, 13h – 14h et 18h – 19h |",
-      "| Samedi | 9h30 – 11h |",
-      "",
-      `Retrouvez le calendrier partagé à jour sur [IDO](${CALENDRIER_URL}).`,
-    ].join("\n"),
-  },
-  [ENCADRANTS_SLOT]: {
-    heading: "Encadrants",
-    body: [
-      "- François PERRINEAU",
-      "- Hugo PRÉZELIN",
-      "- Billton VITUS",
-      "- Aurélie VANNUTELLI",
-      "- Anne LARRIBE",
-      "- Damien MARTINS",
-    ].join("\n"),
+    body: `Retrouvez le calendrier partagé à jour sur [IDO](${CALENDRIER_URL}).`,
   },
   [GARDIEN_SLOT]: {
     heading: "Contact du gardien",
@@ -89,11 +110,14 @@ const DEFAULT_SECTIONS: Record<string, { heading: string; body: string }> = {
 function TextSection({
   slot,
   block,
+  prepend,
   headingClassName = "font-display text-lg uppercase text-toac-blue-950",
   bodyClassName = "mt-3 block space-y-3 whitespace-pre-line text-sm text-toac-blue-900/90",
 }: {
   slot: string;
   block?: CmsPageBlock;
+  // Contenu généré (ex. tableau des créneaux) affiché entre le titre et le texte du bloc.
+  prepend?: ReactNode;
   headingClassName?: string;
   bodyClassName?: string;
 }) {
@@ -115,6 +139,7 @@ function TextSection({
       ) : (
         <h2 className={headingClassName}>{fallback.heading}</h2>
       )}
+      {prepend}
       {block ? (
         <CmsEditableText
           as="div"
@@ -131,10 +156,15 @@ function TextSection({
 }
 
 export default async function MusculationPage() {
-  const [cmsBlocks, hiddenBlocks] = await Promise.all([
+  const [cmsBlocks, hiddenBlocks, trainingSessions, catalog] = await Promise.all([
     getCmsPageBlocks("musculation"),
     getCmsHiddenBlocks("musculation"),
+    getCmsTrainingSessions(),
+    getCmsCatalog(),
   ]);
+
+  const creneauxTable = weeklySlotsTable(trainingSessions, SPORT) ?? FALLBACK_CRENEAUX_TABLE;
+  const coachNames = catalog ? coachesForSport(catalog, SPORT).map((c) => c.name) : FALLBACK_ENCADRANTS;
 
   const hiddenSlots = new Set(hiddenBlocks.map((b) => b.slot).filter(Boolean));
   const blockBySlot = new Map((cmsBlocks ?? []).filter((b) => b.slot).map((b) => [b.slot as string, b]));
@@ -149,7 +179,7 @@ export default async function MusculationPage() {
   // "+ Ajouter un bloc"), sans slot connu à l'avance : sans cette liste, un
   // tel bloc n'apparaîtrait nulle part sur cette page (même bug que sur
   // /natation, corrigé le même jour).
-  const knownSlots = new Set(Object.keys(DEFAULT_SECTIONS));
+  const knownSlots = new Set([...Object.keys(DEFAULT_SECTIONS), ...RETIRED_SLOTS]);
   const extraBlocks = (cmsBlocks ?? []).filter((b) => !b.slot || !knownSlots.has(b.slot));
 
   return (
@@ -160,7 +190,24 @@ export default async function MusculationPage() {
 
         <div className="mt-10 grid gap-10 lg:grid-cols-2">
           <div className="space-y-8">
-            {[CRENEAUX_SLOT, ENCADRANTS_SLOT, GARDIEN_SLOT, CONDITIONS_SLOT]
+            {!hiddenSlots.has(CRENEAUX_SLOT) && (
+              <TextSection
+                slot={CRENEAUX_SLOT}
+                block={blockBySlot.get(CRENEAUX_SLOT)}
+                prepend={
+                  <div className="mt-3 text-sm text-toac-blue-900/90">{renderRichText(creneauxTable)}</div>
+                }
+              />
+            )}
+            {coachNames.length > 0 && (
+              <section id={ENCADRANTS_SLOT} className="scroll-mt-24">
+                <h2 className="font-display text-lg uppercase text-toac-blue-950">Encadrants</h2>
+                <div className="mt-3 block space-y-3 whitespace-pre-line text-sm text-toac-blue-900/90">
+                  {renderRichText(coachNames.map((name) => `- ${name}`).join("\n"))}
+                </div>
+              </section>
+            )}
+            {[GARDIEN_SLOT, CONDITIONS_SLOT]
               .filter((slot) => !hiddenSlots.has(slot))
               .map((slot) => (
                 <TextSection key={slot} slot={slot} block={blockBySlot.get(slot)} />

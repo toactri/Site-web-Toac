@@ -82,6 +82,12 @@ export type CmsProduct = {
   price: number | null;
   image_url: string | null;
   url: string | null;
+  // Avantage réservé aux adhérents (fiches partenaires) — affiché dans
+  // l'espace adhérents, jamais sur les pages publiques.
+  member_benefits?: string;
+  // Sports encadrés (fiches "Encadrement sportif"), clés de
+  // CmsTrainingSession.sport : natation, course, velo, muscu.
+  sports?: string[];
   position: number;
 };
 
@@ -100,6 +106,9 @@ type CmsNavRow = {
   protected: boolean;
   nav_position: number | null;
   footer_position: number | null;
+  // Sous-menu généré ici plutôt que saisi lien par lien dans le dashboard :
+  // 'partners' = un lien par partenaire ayant une page dédiée.
+  auto_children?: string | null;
 };
 
 async function fetchFromCms<T>(table: string, query: string): Promise<T[] | null> {
@@ -329,14 +338,22 @@ export async function getCmsNavigation(): Promise<{
     byParent.get(row.parent_id)!.push(row);
   }
 
+  const partnerLinks = rows.some((row) => row.auto_children === "partners") ? await getPartnerPageLinks() : [];
+
   const nav: NavItem[] = rows
     .filter((row) => !row.parent_id && row.nav_position !== null)
     .sort((a, b) => (a.nav_position ?? 0) - (b.nav_position ?? 0))
     .map((row) => {
-      const children = (byParent.get(row.id) ?? [])
+      const manual = (byParent.get(row.id) ?? [])
         .filter((child) => child.nav_position !== null)
         .sort((a, b) => (a.nav_position ?? 0) - (b.nav_position ?? 0))
         .map((child) => ({ label: child.label, href: child.href, protected: child.protected }));
+      // Liens générés ajoutés après les liens saisis à la main, sans doublon.
+      const generated = row.auto_children === "partners" ? partnerLinks : [];
+      const children = [
+        ...manual,
+        ...generated.filter((link) => !manual.some((m) => m.href === link.href)),
+      ];
       return {
         label: row.label,
         href: row.href,
@@ -353,4 +370,22 @@ export async function getCmsNavigation(): Promise<{
     nav: nav.length ? nav : null,
     footer: footer.length ? footer : null,
   };
+}
+
+export const PARTNERS_SECTION_NAME = "Partenaires";
+
+/**
+ * Un lien par partenaire commercial qui a une page dédiée (page CMS dont le
+ * slug est celui de son nom), dans l'ordre de la rubrique "Partenaires".
+ * Supprimer ou renommer le partenaire dans le dashboard met donc le menu à
+ * jour tout seul, sans entrée de navigation à maintenir à part.
+ */
+async function getPartnerPageLinks(): Promise<NavLink[]> {
+  const [catalog, pages] = await Promise.all([getCmsCatalog(), getCmsPages()]);
+  const partners = catalog?.find((s) => s.name === PARTNERS_SECTION_NAME)?.products ?? [];
+  const hrefFor = partnerPageHrefResolver(pages);
+  return partners.flatMap((p) => {
+    const href = hrefFor(p.name);
+    return href ? [{ label: p.name, href }] : [];
+  });
 }

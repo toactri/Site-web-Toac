@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { AVANTAGES_PARTENAIRES } from "@/content/partenaires";
-import { getCmsPageBlocks, getCmsCatalog } from "@/lib/cms";
-import { CmsEditableText, CmsAddTile } from "@/components/cms-edit";
+import { getCmsPageBlocks, getCmsCatalog, PARTNERS_SECTION_NAME } from "@/lib/cms";
+import { CmsEditableText } from "@/components/cms-edit";
 
 export const metadata: Metadata = {
   title: "Avantages partenaires",
@@ -19,7 +19,13 @@ export default async function AvantagesPage() {
     getCmsCatalog(),
   ]);
   const introBlock = introBlocks?.[0];
-  const avantagesSection = cmsCatalog?.find((s) => s.name === "Avantages partenaires");
+  // L'avantage est un champ de la fiche partenaire (dashboard → Partenaires) :
+  // plus de liste « Avantages partenaires » à tenir à jour en parallèle.
+  const partnersWithBenefits = cmsCatalog
+    ? (cmsCatalog.find((s) => s.name === PARTNERS_SECTION_NAME)?.products ?? []).filter((p) =>
+        p.member_benefits?.trim()
+      )
+    : null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
@@ -55,19 +61,14 @@ export default async function AvantagesPage() {
       )}
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
-        {avantagesSection
-          ? avantagesSection.products.map((p) => (
+        {partnersWithBenefits
+          ? partnersWithBenefits.map((p) => (
               <div key={p.id} className="rounded-lg border border-toac-gray-200 bg-white p-5 shadow-sm">
-                <CmsEditableText
-                  as="h2"
-                  value={p.name}
-                  target={{ kind: "product", id: p.id, field: "name" }}
-                  className="font-display text-base uppercase text-toac-blue-950"
-                />
+                <h2 className="font-display text-base uppercase text-toac-blue-950">{p.name}</h2>
                 <CmsEditableText
                   as="p"
-                  value={p.description}
-                  target={{ kind: "product", id: p.id, field: "description" }}
+                  value={p.member_benefits ?? ""}
+                  target={{ kind: "product", id: p.id, field: "member_benefits" }}
                   multiline
                   className="mt-2 block whitespace-pre-line text-sm text-toac-blue-900/90"
                 />
@@ -87,10 +88,6 @@ export default async function AvantagesPage() {
                 )}
               </div>
             ))}
-        <CmsAddTile
-          payload={{ type: "add-product", sectionId: avantagesSection?.id }}
-          label="+ Ajouter un partenaire avantage"
-        />
       </div>
     </div>
   );
