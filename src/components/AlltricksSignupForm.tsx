@@ -1,4 +1,5 @@
 import { inputClass, labelClass } from "@/components/formStyles";
+import { createFormToken, FORM_TOKEN_FIELD, HONEYPOT_FIELD } from "@/lib/formGuard";
 
 /**
  * Message affiché en haut de la page partenaire après envoi du formulaire
@@ -50,6 +51,12 @@ export default function AlltricksSignupForm() {
 
           <form action="/api/partenaires/inscription" method="POST" className="mt-4 space-y-4">
             <input type="hidden" name="partenaire" value="alltricks" />
+            {/* Anti-spam (voir src/lib/formGuard.ts) : jeton horodaté signé + champ piège invisible. */}
+            <input type="hidden" name={FORM_TOKEN_FIELD} value={createFormToken()} />
+            <div aria-hidden="true" className="absolute left-[-9999px] top-auto h-0 w-0 overflow-hidden">
+              <label htmlFor="alltricks-hp">Ne pas remplir ce champ</label>
+              <input id="alltricks-hp" name={HONEYPOT_FIELD} type="text" tabIndex={-1} autoComplete="off" />
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

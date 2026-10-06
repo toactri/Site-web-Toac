@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { insertPartnerSignup, DatabaseNotConfiguredError } from "@/lib/db";
 import { buildErrorHtml } from "@/lib/monetico";
 import { notifyStaffAndRecord } from "@/lib/partnerSignupNotify";
+import { checkFormSubmission } from "@/lib/formGuard";
 
 /**
  * Demande d'activation des avantages d'un partenaire (ex. Alltricks) : un
@@ -35,6 +36,18 @@ export async function POST(request: NextRequest) {
   }
   if (!consentement) {
     return htmlError("Merci de donner votre consentement pour continuer.");
+  }
+
+  // Robot probable : même redirection qu'un envoi réussi pour ne pas lui
+  // signaler le blocage, mais rien n'est enregistré ni envoyé.
+  const guard = checkFormSubmission(form, { nom, prenom });
+  if (guard.kind === "spam") {
+    console.info("[partenaires] Demande bloquée (anti-spam) :", guard.reason, { partenaire, email });
+    return NextResponse.redirect(new URL(`${backHref}?merci=1`, request.url), 303);
+  }
+  if (guard.kind === "reload") {
+    console.info("[partenaires] Demande refusée :", guard.reason, { partenaire, email });
+    return htmlError("Le formulaire a expiré. Recharge la page puis renvoie ta demande.");
   }
 
   let signup;
