@@ -25,6 +25,13 @@ export default async function BureauPage() {
   const bureauSection = cmsCatalog?.find((s) => s.name === "Bureau 2026");
   const coachsSection = cmsCatalog?.find((s) => s.name === "Encadrement sportif");
   const honneurSection = cmsCatalog?.find((s) => s.name === "Président d'honneur");
+  // Les encadrants uniquement "Musculation" ne sont pas des coachs : ils sont
+  // habilités à récupérer la clé de la salle et en sont responsables, rien de
+  // plus. Ils restent listés sur la page Musculation, pas ici. Un coach d'un
+  // autre sport qui encadre aussi la muscu reste affiché.
+  const coachs = coachsSection?.products.filter(
+    (c) => !(c.sports?.length && c.sports.every((sp) => sp === "muscu"))
+  );
 
   return (
     <Suspense fallback={null}>
@@ -179,8 +186,8 @@ export default async function BureauPage() {
 
       <h2 className="mt-14 font-display text-xl uppercase text-toac-blue-950">Encadrement sportif</h2>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {coachsSection
-          ? coachsSection.products.map((c) => (
+        {coachs
+          ? coachs.map((c) => (
               <div
                 key={c.id}
                 className="relative flex items-center gap-4 rounded-lg border border-toac-gray-200 bg-white p-4 pr-9 shadow-sm"
