@@ -86,6 +86,12 @@ export default async function BureauDossiersPage() {
           Décharges musculation →
         </Link>
         <Link
+          href="/espace-adherents/bureau/attestations"
+          className="rounded-md border border-toac-blue-800 px-4 py-2 text-sm font-medium text-toac-blue-950 hover:bg-toac-blue-950 hover:text-white"
+        >
+          Attestations de paiement →
+        </Link>
+        <Link
           href="/espace-adherents/bureau/diagnostic"
           className="rounded-md border border-toac-blue-800/40 px-4 py-2 text-sm font-medium text-toac-blue-900/70 hover:bg-toac-blue-950 hover:text-white"
         >

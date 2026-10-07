@@ -262,6 +262,43 @@ Lecture des résultats :
   access on a private store » signifie qu'un `put()` demande `access: "public"` sur le store privé du
   club : c'est le code qu'il faut corriger, pas la configuration Vercel.
 
+## 6ter. Attestation de paiement (CSE)
+
+La page **`/attestation-adhesion`** permet à un adhérent de recevoir par email une attestation de paiement
+(licence FFTri + cotisation club) à transmettre à son CSE. « Attestation » et non « facture » : la licence est
+encaissée par la FFTri, le club atteste du paiement mais ne facture pas à sa place.
+
+Parcours :
+
+1. L'adhérent saisit nom, prénom et date de naissance. Le serveur cherche le dossier dans la saison la plus
+   récente importée (nom/prénom comparés sans accents ni casse, dans les deux ordres).
+2. Seuls les dossiers au statut **Payé** obtiennent une attestation. Le PDF est généré
+   (`src/lib/attestationPdf.ts`), déposé dans le store Blob privé (`attestations/…`) et envoyé **en pièce
+   jointe à l'email du dossier** via Brevo — jamais à une adresse saisie dans le formulaire, ni affiché à
+   l'écran : c'est ce qui empêche d'obtenir l'attestation de quelqu'un d'autre. Une nouvelle demande moins de
+   10 minutes après un envoi réussi ne renvoie rien.
+3. Chaque attestation apparaît dans **Espace Adhérents → Bureau → Attestations de paiement**
+   (`/espace-adherents/bureau/attestations`) : voir/télécharger le PDF, le renvoyer, le supprimer.
+
+Montants repris de l'onglet « Dossiers adhésion » du Google Sheets : **cotisation = « Cotiz » − « Réduc »**
+(ni la trifonction ni le dépôt de caution) et **licence = « Licence (€) »**.
+
+### Mise en route (une fois par saison)
+
+Tout se fait depuis **Bureau → Attestations de paiement** ; le service reste fermé tant que les deux étapes
+ne sont pas faites.
+
+1. **Signataire** : nom du trésorier + image de sa signature (PNG/JPG). L'image est rangée dans le store Blob
+   privé, jamais dans ce dépôt (public).
+2. **Liste des adhérents** : dans le Sheets, onglet « Dossiers adhésion », `Fichier → Télécharger → .csv`,
+   puis déposer le fichier en indiquant la saison. Un import remplace toute la liste de cette saison ; les
+   colonnes sont retrouvées par leur en-tête. **Attention** : l'export CSV reprend les valeurs *affichées* ;
+   si « Licence (€) » est affichée arrondie (101 € au lieu de 100,70 €), passez la colonne au format
+   `0,00 €` avant d'exporter — l'import affiche un avertissement dans ce cas.
+
+Tables utilisées (créées automatiquement) : `adherents_saison`, `attestations`, `parametres`. Variables :
+`DATABASE_URL`, `BLOB_READ_WRITE_TOKEN`, `BREVO_API_KEY` (+ `BREVO_FROM_EMAIL`).
+
 ## 7. Sécurité de l'espace adhérents
 
 - Authentification par identifiant/mot de passe (bcrypt), session signée (HMAC) dans un cookie **httpOnly**

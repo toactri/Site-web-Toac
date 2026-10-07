@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   // pas dans la fonction déployée et le PDF sortirait sans en-tête.
   outputFileTracingIncludes: {
     "/api/musculation/decharge": ["./public/images/decharge-entete.png"],
+    // Logo de l'attestation de paiement (src/lib/attestationPdf.ts).
+    "/api/attestation": ["./public/images/logo-toac.png"],
   },
   async redirects() {
     return [

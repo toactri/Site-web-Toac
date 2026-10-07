@@ -189,6 +189,60 @@ function ensureSchema(): Promise<void> {
           ADD COLUMN IF NOT EXISTS notification_destinataires TEXT[] NOT NULL DEFAULT '{}',
           ADD COLUMN IF NOT EXISTS notification_erreur TEXT;
 
+        -- Adhérents d'une saison, importés depuis l'onglet « Dossiers
+        -- adhésion » du Google Sheets (Bureau → Attestations). Sert à vérifier
+        -- l'adhésion et à reprendre les montants payés sur l'attestation. Un
+        -- import remplace toutes les lignes de sa saison.
+        CREATE TABLE IF NOT EXISTS adherents_saison (
+          id SERIAL PRIMARY KEY,
+          saison TEXT NOT NULL,
+          nom TEXT NOT NULL,
+          prenom TEXT NOT NULL,
+          name_key TEXT NOT NULL,
+          date_naissance TEXT NOT NULL,
+          sexe TEXT,
+          email TEXT,
+          cotisation_centimes INTEGER NOT NULL DEFAULT 0,
+          licence_centimes INTEGER NOT NULL DEFAULT 0,
+          statut_dossier TEXT,
+          importe_le TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+        CREATE INDEX IF NOT EXISTS adherents_saison_lookup
+          ON adherents_saison (saison, name_key, date_naissance);
+
+        -- Attestations de paiement générées à la demande des adhérents. Les
+        -- montants et l'identité sont recopiés au moment de la génération :
+        -- c'est un instantané du document envoyé, indépendant des imports
+        -- ultérieurs. Une seule ligne par adhérent et par saison, mise à jour
+        -- à chaque nouvelle demande.
+        CREATE TABLE IF NOT EXISTS attestations (
+          id SERIAL PRIMARY KEY,
+          cree_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          genere_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          saison TEXT NOT NULL,
+          name_key TEXT NOT NULL,
+          date_naissance TEXT NOT NULL,
+          nom TEXT NOT NULL,
+          prenom TEXT NOT NULL,
+          email TEXT NOT NULL,
+          cotisation_centimes INTEGER NOT NULL,
+          licence_centimes INTEGER NOT NULL,
+          document_path TEXT NOT NULL,
+          demandes INTEGER NOT NULL DEFAULT 1,
+          envoi_statut TEXT,
+          envoi_le TIMESTAMPTZ,
+          envoi_erreur TEXT,
+          UNIQUE (saison, name_key, date_naissance)
+        );
+
+        -- Réglages modifiables depuis la vue bureau (nom du trésorier, image de
+        -- signature de l'attestation…), sous forme clé/valeur.
+        CREATE TABLE IF NOT EXISTS parametres (
+          cle TEXT PRIMARY KEY,
+          valeur TEXT,
+          modifie_le TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
         CREATE TABLE IF NOT EXISTS members (
           id SERIAL PRIMARY KEY,
           first_name TEXT NOT NULL,
@@ -685,6 +739,261 @@ export async function getMusculationDecharges(): Promise<MusculationDechargeRow[
     "SELECT * FROM musculation_decharges ORDER BY recue_le DESC"
   );
   return rows;
+}
+
+export interface AdherentSaisonInput {
+  nom: string;
+  prenom: string;
+  /** Date ISO « AAAA-MM-JJ ». */
+  dateNaissance: string;
+  sexe: string | null;
+  email: string | null;
+  cotisationCentimes: number;
+  licenceCentimes: number;
+  statutDossier: string | null;
+}
+
+export interface AdherentSaisonRow {
+  id: number;
+  saison: string;
+  nom: string;
+  prenom: string;
+  name_key: string;
+  date_naissance: string;
+  sexe: string | null;
+  email: string | null;
+  cotisation_centimes: number;
+  licence_centimes: number;
+  statut_dossier: string | null;
+  importe_le: string;
+}
+
+/**
+ * Remplace tous les adhérents d'une saison par ceux de l'import, dans une seule
+ * transaction : en cas d'erreur, la liste précédente reste intacte. Les
+ * attestations déjà envoyées ne sont pas touchées (elles portent leur propre
+ * copie des données).
+ */
+export async function replaceAdherentsSaison(saison: string, adherents: AdherentSaisonInput[]): Promise<void> {
+  await ensureSchema();
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM adherents_saison WHERE saison = $1", [saison]);
+    for (const a of adherents) {
+      await client.query(
+        `
+        INSERT INTO adherents_saison (
+          saison, nom, prenom, name_key, date_naissance, sexe, email,
+          cotisation_centimes, licence_centimes, statut_dossier
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        `,
+        [
+          saison,
+          a.nom,
+          a.prenom,
+          nameKey(a.prenom, a.nom),
+          a.dateNaissance,
+          a.sexe,
+          a.email,
+          a.cotisationCentimes,
+          a.licenceCentimes,
+          a.statutDossier,
+        ]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** Saison la plus récente importée, ex. « 2026/2027 », ou null si aucun import. */
+export async function getLatestSaison(): Promise<string | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ saison: string | null }>(
+    "SELECT max(saison) AS saison FROM adherents_saison"
+  );
+  return rows[0]?.saison ?? null;
+}
+
+export async function getAdherentsSaisonStats(): Promise<
+  { saison: string; total: number; payes: number; importe_le: string }[]
+> {
+  await ensureSchema();
+  const { rows } = await getPool().query(
+    `
+    SELECT saison,
+           count(*)::int AS total,
+           count(*) FILTER (WHERE lower(btrim(statut_dossier)) IN ('payé', 'paye'))::int AS payes,
+           max(importe_le) AS importe_le
+    FROM adherents_saison
+    GROUP BY saison
+    ORDER BY saison DESC
+    `
+  );
+  return rows;
+}
+
+/**
+ * Retrouve un adhérent de la saison par nom, prénom et date de naissance. Le
+ * nom et le prénom sont comparés sans accents, casse, espaces ni tirets, et
+ * dans les deux ordres (un nom saisi dans le champ prénom arrive souvent).
+ */
+export async function findAdherentSaison(
+  saison: string,
+  identite: { nom: string; prenom: string; dateNaissance: string }
+): Promise<AdherentSaisonRow | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AdherentSaisonRow>(
+    `
+    SELECT * FROM adherents_saison
+    WHERE saison = $1 AND date_naissance = $2 AND name_key IN ($3, $4)
+    ORDER BY (name_key = $3) DESC, id
+    LIMIT 1
+    `,
+    [
+      saison,
+      identite.dateNaissance,
+      nameKey(identite.prenom, identite.nom),
+      nameKey(identite.nom, identite.prenom),
+    ]
+  );
+  return rows[0] ?? null;
+}
+
+export interface AttestationRow {
+  id: number;
+  cree_le: string;
+  genere_le: string;
+  saison: string;
+  name_key: string;
+  date_naissance: string;
+  nom: string;
+  prenom: string;
+  email: string;
+  cotisation_centimes: number;
+  licence_centimes: number;
+  document_path: string;
+  demandes: number;
+  envoi_statut: NotificationStatut | null;
+  envoi_le: string | null;
+  envoi_erreur: string | null;
+}
+
+export async function getAttestationFor(
+  saison: string,
+  adherent: Pick<AdherentSaisonRow, "name_key" | "date_naissance">
+): Promise<AttestationRow | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AttestationRow>(
+    "SELECT * FROM attestations WHERE saison = $1 AND name_key = $2 AND date_naissance = $3",
+    [saison, adherent.name_key, adherent.date_naissance]
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Enregistre l'attestation qui vient d'être générée. Si l'adhérent en avait
+ * déjà une pour cette saison, la ligne est mise à jour (nouveau document,
+ * compteur de demandes incrémenté) : l'appelant efface l'ancien fichier.
+ */
+export async function upsertAttestation(a: {
+  saison: string;
+  adherent: AdherentSaisonRow;
+  documentPath: string;
+}): Promise<AttestationRow> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AttestationRow>(
+    `
+    INSERT INTO attestations (
+      saison, name_key, date_naissance, nom, prenom, email,
+      cotisation_centimes, licence_centimes, document_path
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    ON CONFLICT (saison, name_key, date_naissance) DO UPDATE SET
+      genere_le = now(),
+      nom = EXCLUDED.nom,
+      prenom = EXCLUDED.prenom,
+      email = EXCLUDED.email,
+      cotisation_centimes = EXCLUDED.cotisation_centimes,
+      licence_centimes = EXCLUDED.licence_centimes,
+      document_path = EXCLUDED.document_path,
+      demandes = attestations.demandes + 1,
+      envoi_statut = NULL,
+      envoi_le = NULL,
+      envoi_erreur = NULL
+    RETURNING *
+    `,
+    [
+      a.saison,
+      a.adherent.name_key,
+      a.adherent.date_naissance,
+      a.adherent.nom,
+      a.adherent.prenom,
+      a.adherent.email ?? "",
+      a.adherent.cotisation_centimes,
+      a.adherent.licence_centimes,
+      a.documentPath,
+    ]
+  );
+  return rows[0];
+}
+
+export async function recordAttestationEnvoi(
+  id: number,
+  result: { statut: NotificationStatut; erreur?: string | null }
+): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    "UPDATE attestations SET envoi_statut = $2, envoi_le = now(), envoi_erreur = $3 WHERE id = $1",
+    [id, result.statut, result.erreur ?? null]
+  );
+}
+
+export async function getAttestations(): Promise<AttestationRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AttestationRow>(
+    "SELECT * FROM attestations ORDER BY genere_le DESC"
+  );
+  return rows;
+}
+
+export async function getAttestationById(id: number): Promise<AttestationRow | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AttestationRow>("SELECT * FROM attestations WHERE id = $1", [id]);
+  return rows[0] ?? null;
+}
+
+export async function deleteAttestation(id: number): Promise<AttestationRow | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AttestationRow>(
+    "DELETE FROM attestations WHERE id = $1 RETURNING *",
+    [id]
+  );
+  return rows[0] ?? null;
+}
+
+export async function getParametres(cles: string[]): Promise<Record<string, string | null>> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ cle: string; valeur: string | null }>(
+    "SELECT cle, valeur FROM parametres WHERE cle = ANY($1)",
+    [cles]
+  );
+  return Object.fromEntries(rows.map((r) => [r.cle, r.valeur]));
+}
+
+export async function setParametre(cle: string, valeur: string | null): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    `
+    INSERT INTO parametres (cle, valeur) VALUES ($1, $2)
+    ON CONFLICT (cle) DO UPDATE SET valeur = EXCLUDED.valeur, modifie_le = now()
+    `,
+    [cle, valeur]
+  );
 }
 
 export interface InscriptionRow {

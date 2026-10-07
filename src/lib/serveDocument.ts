@@ -8,7 +8,8 @@ import { buildDechargeFileName } from "@/lib/documentUrl";
 
 /**
  * Sert un document du store Blob privé (décharges musculation, certificats
- * médicaux, justificatifs de tarif réduit). Ces fichiers n'ont pas d'URL
+ * médicaux, justificatifs de tarif réduit, attestations de paiement et
+ * signature du trésorier — ces deux derniers pour les comptes `admin` seulement). Ces fichiers n'ont pas d'URL
  * publique : ils ne sortent que par ici, après contrôle d'accès.
  *
  * Deux façons d'y avoir droit :
@@ -26,7 +27,7 @@ import { buildDechargeFileName } from "@/lib/documentUrl";
  */
 
 /** Préfixes de chemins que la route accepte de servir, même pour un admin. */
-const ALLOWED_PREFIXES = ["musculation/", "justificatifs/"];
+const ALLOWED_PREFIXES = ["musculation/", "justificatifs/", "attestations/"];
 
 /** Types servis tels quels dans le navigateur ; tout le reste part en téléchargement. */
 const INLINE_CONTENT_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/jpg"]);
