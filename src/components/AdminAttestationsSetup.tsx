@@ -52,7 +52,7 @@ export function AttestationsImportForm({ defaultSaison }: { defaultSaison: strin
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <ol className="list-decimal space-y-1 pl-5 text-sm text-toac-blue-900/80">
-        <li>Dans le Google Sheets d&apos;adhésion, ouvrez l&apos;onglet « Dossiers adhésion ».</li>
+        <li>Dans le Google Sheets d&apos;adhésion, ouvrez l&apos;onglet « Dossiers (tri/nom) ».</li>
         <li>Fichier → Télécharger → Valeurs séparées par des virgules (.csv).</li>
         <li>Déposez le fichier ci-dessous. L&apos;import remplace la liste de la saison choisie.</li>
       </ol>

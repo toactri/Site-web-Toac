@@ -1,8 +1,8 @@
 import type { AdherentSaisonInput } from "@/lib/db";
 
 /**
- * Lecture de l'export CSV de l'onglet « Dossiers adhésion » du Google Sheets
- * d'adhésion (Fichier → Télécharger → CSV, onglet ouvert). Utilisé par l'import
+ * Lecture de l'export CSV de l'onglet « Dossiers (tri/nom) » (ou « Dossiers
+ * adhésion ») du Google Sheets d'adhésion (Fichier → Télécharger → CSV, onglet ouvert). Utilisé par l'import
  * de la vue bureau (Bureau → Attestations).
  *
  * Les colonnes sont retrouvées par leur en-tête, pas par leur position : une
@@ -105,11 +105,22 @@ export function parseMontantCentimes(value: string | undefined): number | null {
   return Math.round(Number(cleaned) * 100);
 }
 
-/** « 24/01/1980 » (ou « 1980-01-24 ») → « 1980-01-24 », sinon null. */
+/**
+ * « 24/01/1980 », « 1980-01-24 » ou numéro de série Sheets « 29244 » →
+ * « 1980-01-24 », sinon null.
+ *
+ * Le numéro de série (jours depuis le 30/12/1899) est ce que produit l'export
+ * CSV d'un onglet où la date est affichée en format brut, comme « Dossiers
+ * (tri/nom) ».
+ */
 export function parseDateNaissance(value: string | undefined): string | null {
   const v = (value ?? "").trim();
   let day: number, month: number, year: number;
   let match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(v);
+  if (/^\d{4,5}$/.test(v) && Number(v) > 3000 && Number(v) < 80000) {
+    const date = new Date(Date.UTC(1899, 11, 30) + Number(v) * 86_400_000);
+    return date.toISOString().slice(0, 10);
+  }
   if (match) {
     [day, month, year] = [Number(match[1]), Number(match[2]), Number(match[3])];
   } else if ((match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v))) {

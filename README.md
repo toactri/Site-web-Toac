@@ -290,11 +290,13 @@ ne sont pas faites.
 
 1. **Signataire** : nom du trésorier + image de sa signature (PNG/JPG). L'image est rangée dans le store Blob
    privé, jamais dans ce dépôt (public).
-2. **Liste des adhérents** : dans le Sheets, onglet « Dossiers adhésion », `Fichier → Télécharger → .csv`,
-   puis déposer le fichier en indiquant la saison. Un import remplace toute la liste de cette saison ; les
-   colonnes sont retrouvées par leur en-tête. **Attention** : l'export CSV reprend les valeurs *affichées* ;
-   si « Licence (€) » est affichée arrondie (101 € au lieu de 100,70 €), passez la colonne au format
-   `0,00 €` avant d'exporter — l'import affiche un avertissement dans ce cas.
+2. **Liste des adhérents** : dans le Sheets, onglet **« Dossiers (tri/nom) »** (il ne contient que les dossiers
+   « Payé » et ses montants ne sont pas arrondis), `Fichier → Télécharger → .csv`, puis déposer le fichier en
+   indiquant la saison. Un import remplace toute la liste de cette saison ; les colonnes sont retrouvées par
+   leur en-tête, et les dates de naissance sont acceptées en JJ/MM/AAAA comme en numéro de série Sheets
+   (export de cet onglet). L'onglet « Dossiers adhésion » fonctionne aussi, mais sa colonne « Licence (€) »
+   y est affichée arrondie (101 € au lieu de 100,70 €) et l'export CSV reprend la valeur affichée — l'import
+   affiche un avertissement dans ce cas.
 
 Tables utilisées (créées automatiquement) : `adherents_saison`, `attestations`, `parametres`. Variables :
 `DATABASE_URL`, `BLOB_READ_WRITE_TOKEN`, `BREVO_API_KEY` (+ `BREVO_FROM_EMAIL`).
