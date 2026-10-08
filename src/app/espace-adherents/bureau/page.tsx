@@ -2,10 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { getMembers, DatabaseNotConfiguredError } from "@/lib/db";
-import AdminMembersTable from "@/components/AdminMembersTable";
+import {
+  getAdherentsSaison,
+  getBureauCompteurs,
+  getLatestSaison,
+  DatabaseNotConfiguredError,
+  type AdherentSaisonRow,
+  type BureauCompteurs,
+} from "@/lib/db";
+import AdherentsDashboard from "@/components/AdherentsDashboard";
+import AdherentsSaisonTable from "@/components/AdherentsSaisonTable";
 import DbSetupNotice from "@/components/DbSetupNotice";
-import type { Member } from "@/lib/types";
 import { getCmsPageBlocks } from "@/lib/cms";
 import { CmsEditableText } from "@/components/cms-edit";
 
@@ -19,18 +26,48 @@ export default async function BureauDossiersPage() {
   if (!session) redirect("/connexion?next=/espace-adherents/bureau");
   if (session.role !== "admin") redirect("/espace-adherents/dossier");
 
-  let members: Member[];
+  let saison: string | null = null;
+  let adherents: AdherentSaisonRow[] = [];
+  let compteurs: BureauCompteurs | null = null;
   let dbError = false;
   try {
-    members = await getMembers();
+    [saison, compteurs] = await Promise.all([getLatestSaison(), getBureauCompteurs()]);
+    if (saison) adherents = await getAdherentsSaison(saison);
   } catch (error) {
-    if (error instanceof DatabaseNotConfiguredError) {
-      dbError = true;
-      members = [];
-    } else {
-      throw error;
-    }
+    if (!(error instanceof DatabaseNotConfiguredError)) throw error;
+    dbError = true;
   }
+  const importeLe = adherents[0]?.importe_le;
+  // Les colonnes Profil, TDL… n'existent que depuis l'ajout des indicateurs :
+  // une liste importée avant reste à réimporter pour les alimenter.
+  const aReimporter = adherents.length > 0 && adherents.every((a) => a.profil === null);
+
+  const tuiles = [
+    {
+      href: "/espace-adherents/bureau/partenaires",
+      titre: "Avantages partenaires",
+      valides: compteurs?.partenaires.valides,
+      libelleValides: "activés",
+      enAttente: compteurs?.partenaires.aTraiter,
+      libelleEnAttente: "à traiter",
+    },
+    {
+      href: "/espace-adherents/bureau/musculation",
+      titre: "Décharges musculation",
+      valides: compteurs?.musculation.valides,
+      libelleValides: "validées",
+      enAttente: compteurs?.musculation.aTraiter,
+      libelleEnAttente: "en attente de confirmation",
+    },
+    {
+      href: "/espace-adherents/bureau/attestations",
+      titre: "Attestations de paiement",
+      valides: compteurs?.attestations.valides,
+      libelleValides: "envoyées",
+      enAttente: compteurs?.attestations.aTraiter,
+      libelleEnAttente: "non envoyées",
+    },
+  ];
 
   const introBlocks = await getCmsPageBlocks("espace-bureau");
   const introBlock = introBlocks?.[0];
@@ -49,7 +86,7 @@ export default async function BureauDossiersPage() {
             as="p"
             value={
               introBlock.body ||
-              "Dossiers importés du club (CSV) et nouvelles demandes d'adhésion, dans la même liste. Cochez les étapes au fur et à mesure — les changements sont enregistrés immédiatement."
+              "Adhérents de la saison et indicateurs du tableau de bord, d'après la dernière liste importée depuis le Google Sheets d'adhésion (Bureau → Attestations de paiement)."
             }
             target={{ kind: "block", id: introBlock.id, field: "body" }}
             multiline
@@ -62,8 +99,8 @@ export default async function BureauDossiersPage() {
             Vue bureau — Dossiers adhérents
           </h1>
           <p className="mt-4 text-toac-blue-900/80">
-            Dossiers importés du club (CSV) et nouvelles demandes d&apos;adhésion, dans la même liste. Cochez
-            les étapes au fur et à mesure — les changements sont enregistrés immédiatement.
+            Adhérents de la saison et indicateurs du tableau de bord, d&apos;après la dernière liste importée
+            depuis le Google Sheets d&apos;adhésion (Bureau → Attestations de paiement).
           </p>
         </>
       )}
@@ -72,25 +109,32 @@ export default async function BureauDossiersPage() {
           les adhésions de la saison sont suivies hors du site (Google Form +
           paiement sur l'espace FFTRI). Le paiement en ligne Monetico a été
           retiré du code en octobre 2026 (voir l'historique git). */}
-      <div className="mt-6 flex flex-wrap gap-3">
-        <Link
-          href="/espace-adherents/bureau/partenaires"
-          className="rounded-md border border-toac-blue-800 px-4 py-2 text-sm font-medium text-toac-blue-950 hover:bg-toac-blue-950 hover:text-white"
-        >
-          Avantages partenaires →
-        </Link>
-        <Link
-          href="/espace-adherents/bureau/musculation"
-          className="rounded-md border border-toac-blue-800 px-4 py-2 text-sm font-medium text-toac-blue-950 hover:bg-toac-blue-950 hover:text-white"
-        >
-          Décharges musculation →
-        </Link>
-        <Link
-          href="/espace-adherents/bureau/attestations"
-          className="rounded-md border border-toac-blue-800 px-4 py-2 text-sm font-medium text-toac-blue-950 hover:bg-toac-blue-950 hover:text-white"
-        >
-          Attestations de paiement →
-        </Link>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {tuiles.map((t) => (
+          <Link
+            key={t.href}
+            href={t.href}
+            className="group rounded-lg border border-toac-blue-800 bg-white p-4 shadow-sm hover:bg-toac-blue-950 hover:text-white"
+          >
+            <span className="block text-sm font-medium text-toac-blue-950 group-hover:text-white">{t.titre} →</span>
+            <span className="mt-2 block font-display text-4xl text-toac-blue-950 group-hover:text-white">
+              {t.valides ?? "—"}
+            </span>
+            <span className="block text-sm text-toac-blue-900/80 group-hover:text-white/80">
+              {t.libelleValides}
+              {t.enAttente ? (
+                <>
+                  {" · "}
+                  <strong className="text-amber-800 group-hover:text-amber-200">
+                    {t.enAttente} {t.libelleEnAttente}
+                  </strong>
+                </>
+              ) : null}
+            </span>
+          </Link>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-3">
         <Link
           href="/espace-adherents/bureau/diagnostic"
           className="rounded-md border border-toac-blue-800/40 px-4 py-2 text-sm font-medium text-toac-blue-900/70 hover:bg-toac-blue-950 hover:text-white"
@@ -99,9 +143,39 @@ export default async function BureauDossiersPage() {
         </Link>
       </div>
 
-      <div className="mt-8">
-        {dbError ? <DbSetupNotice /> : <AdminMembersTable members={members} />}
-      </div>
+      {dbError ? (
+        <div className="mt-8"><DbSetupNotice /></div>
+      ) : !saison ? (
+        <p className="mt-8 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          Aucune liste d&apos;adhérents importée. Importez l&apos;onglet « Dossiers (tri/nom) » du Google Sheets
+          depuis{" "}
+          <Link href="/espace-adherents/bureau/attestations" className="underline">Attestations de paiement</Link>.
+        </p>
+      ) : (
+        <>
+          <h2 className="mt-10 font-display text-xl uppercase text-toac-blue-950">Tableau de bord — saison {saison}</h2>
+          {importeLe ? (
+            <p className="mt-1 text-sm text-toac-blue-900/70">
+              Données du Google Sheets importées le{" "}
+              {new Date(importeLe).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}
+              {" "}— pour actualiser, réimportez la liste depuis{" "}
+              <Link href="/espace-adherents/bureau/attestations" className="underline">Attestations de paiement</Link>.
+            </p>
+          ) : null}
+          {aReimporter ? (
+            <p className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              La liste actuelle a été importée avant l&apos;ajout des indicateurs : réimportez-la une fois depuis{" "}
+              <Link href="/espace-adherents/bureau/attestations" className="underline">Attestations de paiement</Link>{" "}
+              pour remplir le profil, le bénévolat TDL, le tarif et les montants.
+            </p>
+          ) : null}
+          <div className="mt-4">
+            <AdherentsDashboard adherents={adherents} />
+          </div>
+          <h2 className="mt-10 mb-4 font-display text-xl uppercase text-toac-blue-950">Liste des adhérents</h2>
+          <AdherentsSaisonTable adherents={adherents} />
+        </>
+      )}
     </div>
   );
 }
