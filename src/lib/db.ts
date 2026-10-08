@@ -210,6 +210,25 @@ function ensureSchema(): Promise<void> {
         CREATE INDEX IF NOT EXISTS adherents_saison_lookup
           ON adherents_saison (saison, name_key, date_naissance);
 
+        -- Colonnes du Sheets reprises pour la liste et les indicateurs de la
+        -- vue bureau (mêmes calculs que l'onglet « Tableau de bord »). Ajoutées
+        -- après coup : vides tant que la saison n'a pas été réimportée.
+        ALTER TABLE adherents_saison
+          ADD COLUMN IF NOT EXISTS code_postal TEXT,
+          ADD COLUMN IF NOT EXISTS telephone TEXT,
+          ADD COLUMN IF NOT EXISTS bureau TEXT,
+          ADD COLUMN IF NOT EXISTS statut_tarif TEXT,
+          ADD COLUMN IF NOT EXISTS reduc_demandee TEXT,
+          ADD COLUMN IF NOT EXISTS justif_ok TEXT,
+          ADD COLUMN IF NOT EXISTS profil TEXT,
+          ADD COLUMN IF NOT EXISTS benevole_tdl TEXT,
+          ADD COLUMN IF NOT EXISTS licence_demandee TEXT,
+          ADD COLUMN IF NOT EXISTS cotiz_brute_centimes INTEGER,
+          ADD COLUMN IF NOT EXISTS reduc_centimes INTEGER,
+          ADD COLUMN IF NOT EXISTS trifonction_centimes INTEGER,
+          ADD COLUMN IF NOT EXISTS depot_centimes INTEGER,
+          ADD COLUMN IF NOT EXISTS part_club_centimes INTEGER;
+
         -- Attestations de paiement générées à la demande des adhérents. Les
         -- montants et l'identité sont recopiés au moment de la génération :
         -- c'est un instantané du document envoyé, indépendant des imports
@@ -751,6 +770,21 @@ export interface AdherentSaisonInput {
   cotisationCentimes: number;
   licenceCentimes: number;
   statutDossier: string | null;
+  /** Colonnes reprises pour la vue bureau (null si absentes du fichier). */
+  codePostal: string | null;
+  telephone: string | null;
+  bureau: string | null;
+  statutTarif: string | null;
+  reducDemandee: string | null;
+  justifOk: string | null;
+  profil: string | null;
+  benevoleTdl: string | null;
+  licenceDemandee: string | null;
+  cotizBruteCentimes: number | null;
+  reducCentimes: number | null;
+  trifonctionCentimes: number | null;
+  depotCentimes: number | null;
+  partClubCentimes: number | null;
 }
 
 export interface AdherentSaisonRow {
@@ -766,6 +800,20 @@ export interface AdherentSaisonRow {
   licence_centimes: number;
   statut_dossier: string | null;
   importe_le: string;
+  code_postal: string | null;
+  telephone: string | null;
+  bureau: string | null;
+  statut_tarif: string | null;
+  reduc_demandee: string | null;
+  justif_ok: string | null;
+  profil: string | null;
+  benevole_tdl: string | null;
+  licence_demandee: string | null;
+  cotiz_brute_centimes: number | null;
+  reduc_centimes: number | null;
+  trifonction_centimes: number | null;
+  depot_centimes: number | null;
+  part_club_centimes: number | null;
 }
 
 /**
@@ -785,8 +833,11 @@ export async function replaceAdherentsSaison(saison: string, adherents: Adherent
         `
         INSERT INTO adherents_saison (
           saison, nom, prenom, name_key, date_naissance, sexe, email,
-          cotisation_centimes, licence_centimes, statut_dossier
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          cotisation_centimes, licence_centimes, statut_dossier,
+          code_postal, telephone, bureau, statut_tarif, reduc_demandee, justif_ok,
+          profil, benevole_tdl, licence_demandee, cotiz_brute_centimes,
+          reduc_centimes, trifonction_centimes, depot_centimes, part_club_centimes
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
         `,
         [
           saison,
@@ -799,6 +850,20 @@ export async function replaceAdherentsSaison(saison: string, adherents: Adherent
           a.cotisationCentimes,
           a.licenceCentimes,
           a.statutDossier,
+          a.codePostal,
+          a.telephone,
+          a.bureau,
+          a.statutTarif,
+          a.reducDemandee,
+          a.justifOk,
+          a.profil,
+          a.benevoleTdl,
+          a.licenceDemandee,
+          a.cotizBruteCentimes,
+          a.reducCentimes,
+          a.trifonctionCentimes,
+          a.depotCentimes,
+          a.partClubCentimes,
         ]
       );
     }
@@ -809,6 +874,15 @@ export async function replaceAdherentsSaison(saison: string, adherents: Adherent
   } finally {
     client.release();
   }
+}
+
+export async function getAdherentsSaison(saison: string): Promise<AdherentSaisonRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AdherentSaisonRow>(
+    "SELECT * FROM adherents_saison WHERE saison = $1 ORDER BY lower(nom), lower(prenom)",
+    [saison]
+  );
+  return rows;
 }
 
 /** Saison la plus récente importée, ex. « 2026/2027 », ou null si aucun import. */

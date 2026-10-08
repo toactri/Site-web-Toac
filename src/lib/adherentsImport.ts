@@ -80,6 +80,19 @@ const COLUMNS = {
   reduc: ["reduc"],
   licence: ["licence"],
   statut: ["statutdudossier"],
+  // Facultatives : reprises pour la liste et les indicateurs de la vue bureau.
+  codePostal: ["codepostal"],
+  telephone: ["telephone"],
+  bureau: ["bureau?", "bureau"],
+  statutTarif: ["tonstatut"],
+  reducDemandee: ["reduc?"],
+  justifOk: ["justifok?", "justifok"],
+  profil: ["profil"],
+  benevoleTdl: ["benevoletdl"],
+  licenceDemandee: ["licencedemandee"],
+  trifonction: ["trifonction"],
+  depot: ["depot"],
+  partClub: ["partclubfftri", "partclub"],
 } as const;
 
 type ColumnKey = keyof typeof COLUMNS;
@@ -95,6 +108,18 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   reduc: "Réduc",
   licence: "Licence (€)",
   statut: "Statut du dossier",
+  codePostal: "Code postal",
+  telephone: "Téléphone",
+  bureau: "Bureau ?",
+  statutTarif: "Ton statut",
+  reducDemandee: "Réduc?",
+  justifOk: "Justif OK?",
+  profil: "Profil",
+  benevoleTdl: "Bénévole TDL",
+  licenceDemandee: "Licence demandée",
+  trifonction: "Trifonction (€)",
+  depot: "Dépôt",
+  partClub: "Part club FFTRI",
 };
 
 /** « 100,70 € », « 1 234,5 », « 101 € », « 100.7 » → centimes. Vide → 0. */
@@ -197,6 +222,9 @@ export function parseDossiersAdhesionCsv(content: string): ImportResult {
     }
 
     const email = cell("email");
+    const texte = (key: ColumnKey) => cell(key) || null;
+    // Montants facultatifs : null si la colonne est absente ou illisible.
+    const montant = (key: ColumnKey) => (index[key] === -1 ? null : parseMontantCentimes(cell(key)));
     adherents.push({
       nom,
       prenom,
@@ -206,6 +234,21 @@ export function parseDossiersAdhesionCsv(content: string): ImportResult {
       cotisationCentimes: Math.max(0, cotiz - reduc),
       licenceCentimes: Math.max(0, licence),
       statutDossier: cell("statut") || null,
+      // « 31200,0 » si la colonne est au format nombre dans le Sheets.
+      codePostal: cell("codePostal").replace(/[.,]0+$/, "") || null,
+      telephone: texte("telephone"),
+      bureau: texte("bureau"),
+      statutTarif: texte("statutTarif"),
+      reducDemandee: texte("reducDemandee"),
+      justifOk: texte("justifOk"),
+      profil: texte("profil"),
+      benevoleTdl: texte("benevoleTdl"),
+      licenceDemandee: texte("licenceDemandee"),
+      cotizBruteCentimes: cotiz,
+      reducCentimes: reduc,
+      trifonctionCentimes: montant("trifonction"),
+      depotCentimes: montant("depot"),
+      partClubCentimes: montant("partClub"),
     });
   });
 
