@@ -10,6 +10,8 @@
       "mcp__Supabase__get_publishable_keys",
       "mcp__Supabase__get_advisors",
       "mcp__Supabase__apply_migration",
+      "mcp__Neon__run_sql",
+      "mcp__Neon__run_sql_transaction",
       "mcp__Neon__list_projects",
       "mcp__Neon__describe_project",
       "mcp__Neon__list_branches",
