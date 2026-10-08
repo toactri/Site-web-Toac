@@ -189,6 +189,25 @@ function ensureSchema(): Promise<void> {
           ADD COLUMN IF NOT EXISTS notification_destinataires TEXT[] NOT NULL DEFAULT '{}',
           ADD COLUMN IF NOT EXISTS notification_erreur TEXT;
 
+        -- Adhérents cochés « validé musculation » depuis la vue bureau : leur
+        -- décharge et leur certificat médical ont été transmis au club sur une
+        -- saison précédente (valables 3 ans), hors formulaire en ligne. Une
+        -- ligne par adhérent (nom, prénom, date de naissance), recopiée depuis
+        -- adherents_saison au moment où la case est cochée. annee_decharge :
+        -- année où la décharge a été signée, la validité court 3 ans.
+        CREATE TABLE IF NOT EXISTS musculation_validations_bureau (
+          id SERIAL PRIMARY KEY,
+          valide_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          valide_par TEXT,
+          saison TEXT NOT NULL,
+          nom TEXT NOT NULL,
+          prenom TEXT NOT NULL,
+          name_key TEXT NOT NULL,
+          date_naissance TEXT NOT NULL,
+          annee_decharge INTEGER,
+          UNIQUE (name_key, date_naissance)
+        );
+
         -- Adhérents d'une saison, importés depuis l'onglet « Dossiers
         -- adhésion » du Google Sheets (Bureau → Attestations). Sert à vérifier
         -- l'adhésion et à reprendre les montants payés sur l'attestation. Un
@@ -760,6 +779,114 @@ export async function getMusculationDecharges(): Promise<MusculationDechargeRow[
   return rows;
 }
 
+/** Adhérent coché « validé musculation » depuis la vue bureau. */
+export interface MusculationValidationRow {
+  id: number;
+  valide_le: string;
+  valide_par: string | null;
+  saison: string;
+  nom: string;
+  prenom: string;
+  name_key: string;
+  date_naissance: string;
+  /** Année de signature de la décharge (validité 3 ans), si renseignée. */
+  annee_decharge: number | null;
+}
+
+export async function getMusculationValidations(): Promise<MusculationValidationRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<MusculationValidationRow>(
+    "SELECT * FROM musculation_validations_bureau ORDER BY lower(nom), lower(prenom)"
+  );
+  return rows;
+}
+
+export async function deleteMusculationValidation(id: number): Promise<MusculationValidationRow | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<MusculationValidationRow>(
+    "DELETE FROM musculation_validations_bureau WHERE id = $1 RETURNING *",
+    [id]
+  );
+  return rows[0] ?? null;
+}
+
+/** Adhérent d'une saison, avec son état vis-à-vis de la salle de musculation. */
+export interface AdherentMusculation {
+  id: number;
+  nom: string;
+  prenom: string;
+  date_naissance: string;
+  /** Coché « validé musculation » par le bureau. */
+  valide_bureau: boolean;
+  annee_decharge: number | null;
+  /** Décharge déposée et validée via le formulaire en ligne (même nom, prénom et date de naissance). */
+  decharge_en_ligne: boolean;
+}
+
+export async function getAdherentsMusculation(saison: string): Promise<AdherentMusculation[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AdherentMusculation>(
+    `
+    SELECT a.id, a.nom, a.prenom, a.date_naissance,
+           (v.id IS NOT NULL) AS valide_bureau,
+           v.annee_decharge,
+           EXISTS (
+             SELECT 1 FROM musculation_decharges d
+             WHERE d.statut = 'valide'
+               AND d.date_naissance = a.date_naissance
+               AND lower(btrim(d.nom)) = lower(btrim(a.nom))
+               AND lower(btrim(d.prenom)) = lower(btrim(a.prenom))
+           ) AS decharge_en_ligne
+    FROM adherents_saison a
+    LEFT JOIN musculation_validations_bureau v
+      ON v.name_key = a.name_key AND v.date_naissance = a.date_naissance
+    WHERE a.saison = $1
+    ORDER BY lower(a.nom), lower(a.prenom)
+    `,
+    [saison]
+  );
+  return rows;
+}
+
+/**
+ * Coche (ou décoche) « validé musculation » pour un adhérent de
+ * adherents_saison. Son identité est recopiée : la validation survit aux
+ * imports suivants, qui remplacent les lignes de la saison. Recocher (ou
+ * changer l'année) met à jour l'année de décharge. Renvoie false si
+ * l'adhérent n'existe pas.
+ */
+export async function setMusculationValidation(
+  adherentId: number,
+  valide: boolean,
+  validePar: string,
+  anneeDecharge: number | null = null
+): Promise<boolean> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ saison: string; nom: string; prenom: string; name_key: string; date_naissance: string }>(
+    "SELECT saison, nom, prenom, name_key, date_naissance FROM adherents_saison WHERE id = $1",
+    [adherentId]
+  );
+  const a = rows[0];
+  if (!a) return false;
+  if (valide) {
+    await getPool().query(
+      `
+      INSERT INTO musculation_validations_bureau (
+        valide_par, saison, nom, prenom, name_key, date_naissance, annee_decharge
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+      ON CONFLICT (name_key, date_naissance) DO UPDATE SET annee_decharge = EXCLUDED.annee_decharge
+      `,
+      [validePar, a.saison, a.nom, a.prenom, a.name_key, a.date_naissance, anneeDecharge]
+    );
+  } else {
+    await getPool().query(
+      "DELETE FROM musculation_validations_bureau WHERE name_key = $1 AND date_naissance = $2",
+      [a.name_key, a.date_naissance]
+    );
+  }
+  return true;
+}
+
 export interface AdherentSaisonInput {
   nom: string;
   prenom: string;
@@ -1070,8 +1197,11 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
            count(*) FILTER (WHERE statut <> 'ajoute')::int AS a_traiter
     FROM partner_signups
     UNION ALL
+    -- Validés musculation = décharges validées en ligne + adhérents cochés
+    -- par le bureau (dossiers des saisons précédentes).
     SELECT 'musculation',
-           count(*) FILTER (WHERE statut = 'valide')::int,
+           (count(*) FILTER (WHERE statut = 'valide')
+             + (SELECT count(*) FROM musculation_validations_bureau))::int,
            count(*) FILTER (WHERE statut <> 'valide')::int
     FROM musculation_decharges
     UNION ALL
