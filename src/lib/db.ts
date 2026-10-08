@@ -814,6 +814,8 @@ export interface AdherentSaisonRow {
   trifonction_centimes: number | null;
   depot_centimes: number | null;
   part_club_centimes: number | null;
+  /** Décharge musculation validée (rapprochée par nom, prénom et date de naissance) — calculé, pas stocké. */
+  musculation?: boolean;
 }
 
 /**
@@ -878,11 +880,23 @@ export async function replaceAdherentsSaison(saison: string, adherents: Adherent
 
 export async function getAdherentsSaison(saison: string): Promise<AdherentSaisonRow[]> {
   await ensureSchema();
-  const { rows } = await getPool().query<AdherentSaisonRow>(
-    "SELECT * FROM adherents_saison WHERE saison = $1 ORDER BY lower(nom), lower(prenom)",
-    [saison]
+  const [{ rows }, { rows: decharges }] = await Promise.all([
+    getPool().query<AdherentSaisonRow>(
+      "SELECT * FROM adherents_saison WHERE saison = $1 ORDER BY lower(nom), lower(prenom)",
+      [saison]
+    ),
+    getPool().query<{ nom: string; prenom: string; date_naissance: string }>(
+      "SELECT nom, prenom, date_naissance FROM musculation_decharges WHERE statut = 'valide'"
+    ),
+  ]);
+  // Même rapprochement que findAdherentSaison : nom et prénom dans les deux ordres.
+  const muscu = new Set(
+    decharges.flatMap((d) => [
+      `${nameKey(d.prenom, d.nom)}|${d.date_naissance}`,
+      `${nameKey(d.nom, d.prenom)}|${d.date_naissance}`,
+    ])
   );
-  return rows;
+  return rows.map((a) => ({ ...a, musculation: muscu.has(`${a.name_key}|${a.date_naissance}`) }));
 }
 
 /** Saison la plus récente importée, ex. « 2026/2027 », ou null si aucun import. */

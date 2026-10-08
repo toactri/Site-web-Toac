@@ -70,13 +70,14 @@ export default function AdherentsSaisonTable({ adherents }: { adherents: Adheren
               <th className={th}>Justif OK ?</th>
               <th className={th}>Licence</th>
               <th className={th}>TDL</th>
+              <th className={th}>Muscu</th>
               <th className={th}>Contact</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-toac-blue-900/60">
+                <td colSpan={9} className="px-3 py-6 text-center text-toac-blue-900/60">
                   Aucun adhérent ne correspond.
                 </td>
               </tr>
@@ -95,6 +96,7 @@ export default function AdherentsSaisonTable({ adherents }: { adherents: Adheren
                   <td className={td}>{a.justif_ok ?? "—"}</td>
                   <td className={td}>{a.licence_demandee ?? "—"}</td>
                   <td className={td}>{a.benevole_tdl ?? "—"}</td>
+                  <td className={td}>{a.musculation ? "Oui" : "—"}</td>
                   <td className={`${td} text-xs`}>
                     {a.email ? <a href={`mailto:${a.email}`} className="underline">{a.email}</a> : null}
                     {a.telephone ? <div>{a.telephone}</div> : null}

@@ -5,8 +5,7 @@ import type { AdherentSaisonRow } from "@/lib/db";
  * bord » du Google Sheets d'adhésion :
  *  - anciens = profil « Toaciste » ou « Retour », nouveaux = « Nouveau » ou
  *    « Mutant » ;
- *  - tableau « Adhérents » : dossiers « Payé » uniquement, « Tous les
- *    dossiers » : toutes les lignes importées ;
+ *  - tableau « Adhérents » : dossiers « Payé » uniquement ;
  *  - pourcentages rapportés au nombre de dossiers de la même colonne
  *    (sauf la ligne Dossiers : part des anciens / nouveaux dans le global) ;
  *  - financier : « attendu » = dossiers hors Abandonné / Refusé / Remboursé,
@@ -61,6 +60,9 @@ const LIGNES: { libelle: string; filtre: (a: Adherent) => boolean }[] = [
   { libelle: "Ayant droit Airbus Opérations", filtre: (a) => norm(a.statut_tarif) === "ayant droit airbus operations" },
   { libelle: "Étudiant / Demandeur d'emploi", filtre: (a) => norm(a.statut_tarif) === "etudiant / demandeur d'emploi" },
   { libelle: "Toulousains", filtre: (a) => CP_TOULOUSE.includes((a.code_postal ?? "").trim()) },
+  { libelle: "Licence Compétition", filtre: (a) => norm(a.licence_demandee) === "competition" },
+  { libelle: "Licence Loisir", filtre: (a) => norm(a.licence_demandee) === "loisir" },
+  { libelle: "Musculation (décharge validée)", filtre: (a) => a.musculation === true },
 ];
 
 function pct(n: number, total: number): number | null {

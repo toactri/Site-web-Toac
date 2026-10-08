@@ -9,27 +9,31 @@ function euros(centimes: number): string {
   return (centimes / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 }
 
+// Valeur et pourcentage dans deux colonnes distinctes, chiffres à chasse fixe :
+// les totaux restent alignés à droite les uns sous les autres.
 function Cellule({ c }: { c: KpiCellule }) {
   return (
-    <td className={`${tdClass} whitespace-nowrap text-right`}>
-      <strong>{c.valeur ?? "—"}</strong>
-      {c.pourcentage !== null ? <span className="ml-2 text-toac-blue-900/60">{c.pourcentage} %</span> : null}
-    </td>
+    <>
+      <td className={`${tdClass} whitespace-nowrap pr-1 text-right font-semibold`}>{c.valeur ?? "—"}</td>
+      <td className={`${tdClass} w-14 whitespace-nowrap pl-1 text-right text-toac-blue-900/60`}>
+        {c.pourcentage !== null ? `${c.pourcentage} %` : ""}
+      </td>
+    </>
   );
 }
 
 function TableKpi({ titre, lignes }: { titre: string; lignes: KpiLigne[] }) {
   return (
-    <section className={cardClass}>
+    <section className={`${cardClass} lg:col-span-2`}>
       <h2 className="mb-3 font-display text-lg uppercase text-toac-blue-950">{titre}</h2>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm tabular-nums">
           <thead className="border-b border-toac-gray-200">
             <tr>
               <th className={thClass} />
-              <th className={`${thClass} text-right`}>Global</th>
-              <th className={`${thClass} text-right`}>Anciens</th>
-              <th className={`${thClass} text-right`}>Nouveaux</th>
+              <th colSpan={2} className={`${thClass} text-center`}>Global</th>
+              <th colSpan={2} className={`${thClass} text-center`}>Anciens</th>
+              <th colSpan={2} className={`${thClass} text-center`}>Nouveaux</th>
             </tr>
           </thead>
           <tbody>
@@ -60,12 +64,11 @@ export default function AdherentsDashboard({ adherents }: { adherents: AdherentS
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <TableKpi titre="Adhérents (dossiers payés)" lignes={kpiAdherents(payes)} />
-      <TableKpi titre="Tous les dossiers" lignes={kpiAdherents(adherents)} />
 
       <section className={cardClass}>
         <h2 className="mb-3 font-display text-lg uppercase text-toac-blue-950">Financier</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm tabular-nums">
             <thead className="border-b border-toac-gray-200">
               <tr>
                 <th className={thClass} />
