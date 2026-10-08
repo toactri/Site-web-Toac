@@ -63,7 +63,7 @@ export default function AdherentsDashboard({ adherents }: { adherents: AdherentS
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <TableKpi titre="Adhérents (dossiers payés)" lignes={kpiAdherents(payes)} />
+      <TableKpi titre="Adhérents" lignes={kpiAdherents(payes)} />
 
       <section className={cardClass}>
         <h2 className="mb-3 font-display text-lg uppercase text-toac-blue-950">Financier</h2>
