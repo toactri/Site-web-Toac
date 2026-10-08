@@ -941,7 +941,7 @@ export interface AdherentSaisonRow {
   trifonction_centimes: number | null;
   depot_centimes: number | null;
   part_club_centimes: number | null;
-  /** Décharge musculation validée (rapprochée par nom, prénom et date de naissance) — calculé, pas stocké. */
+  /** Validé musculation (décharge validée en ligne ou case cochée par le bureau) — calculé, pas stocké. */
   musculation?: boolean;
 }
 
@@ -1007,7 +1007,7 @@ export async function replaceAdherentsSaison(saison: string, adherents: Adherent
 
 export async function getAdherentsSaison(saison: string): Promise<AdherentSaisonRow[]> {
   await ensureSchema();
-  const [{ rows }, { rows: decharges }] = await Promise.all([
+  const [{ rows }, { rows: decharges }, { rows: validationsBureau }] = await Promise.all([
     getPool().query<AdherentSaisonRow>(
       "SELECT * FROM adherents_saison WHERE saison = $1 ORDER BY lower(nom), lower(prenom)",
       [saison]
@@ -1015,14 +1015,20 @@ export async function getAdherentsSaison(saison: string): Promise<AdherentSaison
     getPool().query<{ nom: string; prenom: string; date_naissance: string }>(
       "SELECT nom, prenom, date_naissance FROM musculation_decharges WHERE statut = 'valide'"
     ),
+    getPool().query<{ name_key: string; date_naissance: string }>(
+      "SELECT name_key, date_naissance FROM musculation_validations_bureau"
+    ),
   ]);
-  // Même rapprochement que findAdherentSaison : nom et prénom dans les deux ordres.
-  const muscu = new Set(
-    decharges.flatMap((d) => [
+  // Validés musculation = décharge validée en ligne (même rapprochement que
+  // findAdherentSaison : nom et prénom dans les deux ordres) ou adhérent coché
+  // par le bureau.
+  const muscu = new Set([
+    ...decharges.flatMap((d) => [
       `${nameKey(d.prenom, d.nom)}|${d.date_naissance}`,
       `${nameKey(d.nom, d.prenom)}|${d.date_naissance}`,
-    ])
-  );
+    ]),
+    ...validationsBureau.map((v) => `${v.name_key}|${v.date_naissance}`),
+  ]);
   return rows.map((a) => ({ ...a, musculation: muscu.has(`${a.name_key}|${a.date_naissance}`) }));
 }
 

@@ -62,7 +62,7 @@ const LIGNES: { libelle: string; filtre: (a: Adherent) => boolean }[] = [
   { libelle: "Toulousains", filtre: (a) => CP_TOULOUSE.includes((a.code_postal ?? "").trim()) },
   { libelle: "Licence Compétition", filtre: (a) => norm(a.licence_demandee) === "competition" },
   { libelle: "Licence Loisir", filtre: (a) => norm(a.licence_demandee) === "loisir" },
-  { libelle: "Musculation (décharge validée)", filtre: (a) => a.musculation === true },
+  { libelle: "Musculation (validés)", filtre: (a) => a.musculation === true },
 ];
 
 function pct(n: number, total: number): number | null {
