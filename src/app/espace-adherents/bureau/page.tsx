@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { getMembers, DatabaseNotConfiguredError } from "@/lib/db";
+import { getMembers, getBureauCompteurs, DatabaseNotConfiguredError, type BureauCompteurs } from "@/lib/db";
 import AdminMembersTable from "@/components/AdminMembersTable";
 import DbSetupNotice from "@/components/DbSetupNotice";
 import type { Member } from "@/lib/types";
@@ -20,9 +20,10 @@ export default async function BureauDossiersPage() {
   if (session.role !== "admin") redirect("/espace-adherents/dossier");
 
   let members: Member[];
+  let compteurs: BureauCompteurs | null = null;
   let dbError = false;
   try {
-    members = await getMembers();
+    [members, compteurs] = await Promise.all([getMembers(), getBureauCompteurs()]);
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) {
       dbError = true;
@@ -31,6 +32,33 @@ export default async function BureauDossiersPage() {
       throw error;
     }
   }
+
+  const tuiles = [
+    {
+      href: "/espace-adherents/bureau/partenaires",
+      titre: "Avantages partenaires",
+      valides: compteurs?.partenaires.valides,
+      libelleValides: "activés",
+      enAttente: compteurs?.partenaires.aTraiter,
+      libelleEnAttente: "à traiter",
+    },
+    {
+      href: "/espace-adherents/bureau/musculation",
+      titre: "Décharges musculation",
+      valides: compteurs?.musculation.valides,
+      libelleValides: "validées",
+      enAttente: compteurs?.musculation.aTraiter,
+      libelleEnAttente: "en attente de confirmation",
+    },
+    {
+      href: "/espace-adherents/bureau/attestations",
+      titre: "Attestations de paiement",
+      valides: compteurs?.attestations.valides,
+      libelleValides: "envoyées",
+      enAttente: compteurs?.attestations.aTraiter,
+      libelleEnAttente: "non envoyées",
+    },
+  ];
 
   const introBlocks = await getCmsPageBlocks("espace-bureau");
   const introBlock = introBlocks?.[0];
@@ -72,25 +100,32 @@ export default async function BureauDossiersPage() {
           les adhésions de la saison sont suivies hors du site (Google Form +
           paiement sur l'espace FFTRI). Le paiement en ligne Monetico a été
           retiré du code en octobre 2026 (voir l'historique git). */}
-      <div className="mt-6 flex flex-wrap gap-3">
-        <Link
-          href="/espace-adherents/bureau/partenaires"
-          className="rounded-md border border-toac-blue-800 px-4 py-2 text-sm font-medium text-toac-blue-950 hover:bg-toac-blue-950 hover:text-white"
-        >
-          Avantages partenaires →
-        </Link>
-        <Link
-          href="/espace-adherents/bureau/musculation"
-          className="rounded-md border border-toac-blue-800 px-4 py-2 text-sm font-medium text-toac-blue-950 hover:bg-toac-blue-950 hover:text-white"
-        >
-          Décharges musculation →
-        </Link>
-        <Link
-          href="/espace-adherents/bureau/attestations"
-          className="rounded-md border border-toac-blue-800 px-4 py-2 text-sm font-medium text-toac-blue-950 hover:bg-toac-blue-950 hover:text-white"
-        >
-          Attestations de paiement →
-        </Link>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {tuiles.map((t) => (
+          <Link
+            key={t.href}
+            href={t.href}
+            className="group rounded-lg border border-toac-blue-800 bg-white p-4 shadow-sm hover:bg-toac-blue-950 hover:text-white"
+          >
+            <span className="block text-sm font-medium text-toac-blue-950 group-hover:text-white">{t.titre} →</span>
+            <span className="mt-2 block font-display text-4xl text-toac-blue-950 group-hover:text-white">
+              {t.valides ?? "—"}
+            </span>
+            <span className="block text-sm text-toac-blue-900/80 group-hover:text-white/80">
+              {t.libelleValides}
+              {t.enAttente ? (
+                <>
+                  {" · "}
+                  <strong className="text-amber-800 group-hover:text-amber-200">
+                    {t.enAttente} {t.libelleEnAttente}
+                  </strong>
+                </>
+              ) : null}
+            </span>
+          </Link>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-3">
         <Link
           href="/espace-adherents/bureau/diagnostic"
           className="rounded-md border border-toac-blue-800/40 px-4 py-2 text-sm font-medium text-toac-blue-900/70 hover:bg-toac-blue-950 hover:text-white"

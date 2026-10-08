@@ -961,6 +961,47 @@ export async function getAttestations(): Promise<AttestationRow[]> {
   return rows;
 }
 
+export interface BureauCompteurs {
+  partenaires: { valides: number; aTraiter: number };
+  musculation: { valides: number; aTraiter: number };
+  attestations: { valides: number; aTraiter: number };
+}
+
+/**
+ * Compteurs de la page « Vue bureau » : dossiers validés et restant à
+ * traiter pour chacune des fonctions autonomes. Pour les attestations,
+ * « validé » = attestation envoyée par email, « à traiter » = envoi en
+ * échec ou non effectué.
+ */
+export async function getBureauCompteurs(): Promise<BureauCompteurs> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ fonction: keyof BureauCompteurs; valides: number; a_traiter: number }>(
+    `
+    SELECT 'partenaires' AS fonction,
+           count(*) FILTER (WHERE statut = 'ajoute')::int AS valides,
+           count(*) FILTER (WHERE statut <> 'ajoute')::int AS a_traiter
+    FROM partner_signups
+    UNION ALL
+    SELECT 'musculation',
+           count(*) FILTER (WHERE statut = 'valide')::int,
+           count(*) FILTER (WHERE statut <> 'valide')::int
+    FROM musculation_decharges
+    UNION ALL
+    SELECT 'attestations',
+           count(*) FILTER (WHERE envoi_statut = 'envoyee')::int,
+           count(*) FILTER (WHERE envoi_statut IS DISTINCT FROM 'envoyee')::int
+    FROM attestations
+    `
+  );
+  const compteurs: BureauCompteurs = {
+    partenaires: { valides: 0, aTraiter: 0 },
+    musculation: { valides: 0, aTraiter: 0 },
+    attestations: { valides: 0, aTraiter: 0 },
+  };
+  for (const r of rows) compteurs[r.fonction] = { valides: r.valides, aTraiter: r.a_traiter };
+  return compteurs;
+}
+
 export async function getAttestationById(id: number): Promise<AttestationRow | null> {
   await ensureSchema();
   const { rows } = await getPool().query<AttestationRow>("SELECT * FROM attestations WHERE id = $1", [id]);
