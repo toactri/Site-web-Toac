@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { MusculationDechargeRow, MusculationImportRow } from "@/lib/db";
+import type { MusculationDechargeRow, MusculationValidationRow } from "@/lib/db";
 import { documentHref, buildDechargeFileName } from "@/lib/documentUrl";
 
 /** Extension du certificat, qui peut être un PDF comme une image. */
@@ -22,12 +22,6 @@ function formatIsoDate(iso: string): string {
   return `${day}/${month}/${year}`;
 }
 
-/** Décharge et certificat médical sont valables 3 ans. */
-function finValidite(iso: string): string {
-  const [year, month, day] = iso.split("-");
-  return formatIsoDate(`${Number(year) + 3}-${month}-${day}`);
-}
-
 function compareNoms(a: { nom: string; prenom: string }, b: { nom: string; prenom: string }): number {
   return (
     a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }) ||
@@ -35,9 +29,22 @@ function compareNoms(a: { nom: string; prenom: string }, b: { nom: string; preno
   );
 }
 
+/**
+ * Décharge et certificat médical sont valables 3 ans : signés en 2025, ils
+ * expirent en 2028. Seule l'année est connue pour les dossiers antérieurs.
+ */
+export function ExpirationDecharge({ annee }: { annee: number | null }) {
+  if (!annee) return <span>année de décharge non renseignée</span>;
+  const fin = annee + 3;
+  const now = new Date().getFullYear();
+  if (now > fin) return <span className="font-medium text-red-700">expirée depuis {fin}</span>;
+  if (now === fin) return <span className="font-medium text-amber-700">expire en {fin} (cette année)</span>;
+  return <span>valable jusqu&apos;en {fin}</span>;
+}
+
 type Entree =
   | { kind: "decharge"; key: string; nom: string; prenom: string; date: string; d: MusculationDechargeRow }
-  | { kind: "import"; key: string; nom: string; prenom: string; date: string; i: MusculationImportRow };
+  | { kind: "bureau"; key: string; nom: string; prenom: string; date: string; v: MusculationValidationRow };
 
 type Tri = "nom" | "recent";
 
@@ -91,10 +98,10 @@ function NotificationEtat({ decharge: d }: { decharge: MusculationDechargeRow })
 
 export default function AdminMusculationTable({
   decharges,
-  imports,
+  validations,
 }: {
   decharges: MusculationDechargeRow[];
-  imports: MusculationImportRow[];
+  validations: MusculationValidationRow[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -126,26 +133,26 @@ export default function AdminMusculationTable({
       ...decharges
         .filter((d) => showPending || d.statut === "valide")
         .map((d): Entree => ({ kind: "decharge", key: `d${d.id}`, nom: d.nom, prenom: d.prenom, date: d.recue_le, d })),
-      ...imports.map(
-        (i): Entree => ({ kind: "import", key: `i${i.id}`, nom: i.nom, prenom: i.prenom, date: i.importe_le, i })
+      ...validations.map(
+        (v): Entree => ({ kind: "bureau", key: `v${v.id}`, nom: v.nom, prenom: v.prenom, date: v.valide_le, v })
       ),
     ].filter((e) => !query || `${e.prenom} ${e.nom}`.toLowerCase().includes(query));
     return entrees.sort((a, b) =>
       tri === "nom" ? compareNoms(a, b) : b.date.localeCompare(a.date) || compareNoms(a, b)
     );
-  }, [decharges, imports, search, showPending, tri]);
+  }, [decharges, validations, search, showPending, tri]);
 
-  const [deletingImportId, setDeletingImportId] = useState<number | null>(null);
+  const [deletingValidationId, setDeletingValidationId] = useState<number | null>(null);
 
-  async function handleDeleteImport(i: MusculationImportRow) {
-    if (!window.confirm(`Retirer ${i.prenom} ${i.nom} de la liste des adhérents validés musculation ?`)) return;
-    setDeletingImportId(i.id);
+  async function handleDeleteValidation(v: MusculationValidationRow) {
+    if (!window.confirm(`Retirer ${v.prenom} ${v.nom} de la liste des adhérents validés musculation ?`)) return;
+    setDeletingValidationId(v.id);
     setDeleteError(null);
     try {
-      const response = await fetch("/api/admin/musculation/import/supprimer", {
+      const response = await fetch("/api/admin/musculation/validation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: i.id }),
+        body: JSON.stringify({ validationId: v.id }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
@@ -156,7 +163,7 @@ export default function AdminMusculationTable({
     } catch {
       setDeleteError("Erreur réseau. Réessayez plus tard.");
     } finally {
-      setDeletingImportId(null);
+      setDeletingValidationId(null);
     }
   }
 
@@ -244,7 +251,7 @@ export default function AdminMusculationTable({
     <div>
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-toac-gray-200 bg-white p-4 shadow-sm">
-          <div className="font-display text-2xl text-toac-blue-950">{validesEnLigne + imports.length}</div>
+          <div className="font-display text-2xl text-toac-blue-950">{validesEnLigne + validations.length}</div>
           <div className="text-xs text-toac-blue-900/60">adhérents validés musculation</div>
         </div>
         <div className="rounded-lg border border-toac-gray-200 bg-white p-4 shadow-sm">
@@ -254,8 +261,8 @@ export default function AdminMusculationTable({
           </div>
         </div>
         <div className="rounded-lg border border-toac-gray-200 bg-white p-4 shadow-sm">
-          <div className="font-display text-2xl text-toac-blue-950">{imports.length}</div>
-          <div className="text-xs text-toac-blue-900/60">importés (dossiers des saisons précédentes)</div>
+          <div className="font-display text-2xl text-toac-blue-950">{validations.length}</div>
+          <div className="text-xs text-toac-blue-900/60">cochés par le bureau (dossiers antérieurs)</div>
         </div>
       </div>
 
@@ -290,8 +297,8 @@ export default function AdminMusculationTable({
 
       <div className="space-y-3">
         {filtered.map((e) => {
-          if (e.kind === "import") {
-            const i = e.i;
+          if (e.kind === "bureau") {
+            const v = e.v;
             return (
               <div key={e.key} className="rounded-lg border border-toac-gray-200 bg-white shadow-sm">
                 <button
@@ -301,17 +308,16 @@ export default function AdminMusculationTable({
                 >
                   <div>
                     <div className="font-medium text-toac-blue-950">
-                      {i.prenom} {i.nom}
+                      {v.prenom} {v.nom}
                     </div>
                     <div className="mt-1 text-xs text-toac-blue-900/60">
-                      Dossier transmis sur une saison précédente
-                      {i.date_dossier &&
-                        ` · du ${formatIsoDate(i.date_dossier)}, valable jusqu'au ${finValidite(i.date_dossier)}`}
+                      {v.annee_decharge ? `Décharge ${v.annee_decharge} · ` : "Dossier antérieur · "}
+                      <ExpirationDecharge annee={v.annee_decharge} />
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                      Validée (import)
+                      Validée (bureau)
                     </span>
                     <span aria-hidden="true" className="text-toac-blue-900/50">
                       {expanded === e.key ? "▲" : "▼"}
@@ -323,18 +329,15 @@ export default function AdminMusculationTable({
                     <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
                       <div>
                         <dt className="text-toac-blue-900/60">Date de naissance</dt>
-                        <dd>{i.date_naissance ? formatIsoDate(i.date_naissance) : "—"}</dd>
+                        <dd>{formatIsoDate(v.date_naissance)}</dd>
                       </div>
                       <div>
-                        <dt className="text-toac-blue-900/60">Importé le</dt>
-                        <dd>{formatDate(i.importe_le)}</dd>
+                        <dt className="text-toac-blue-900/60">Coché par le bureau</dt>
+                        <dd>
+                          le {formatDate(v.valide_le)}
+                          {v.valide_par && ` par ${v.valide_par}`} (adhérent {v.saison})
+                        </dd>
                       </div>
-                      {i.commentaire && (
-                        <div className="sm:col-span-2">
-                          <dt className="text-toac-blue-900/60">Commentaire</dt>
-                          <dd>{i.commentaire}</dd>
-                        </div>
-                      )}
                     </dl>
                     <p className="mt-3 text-xs text-toac-blue-900/60">
                       Décharge et certificat médical conservés hors du site (transmis avant la mise en place
@@ -343,14 +346,14 @@ export default function AdminMusculationTable({
                     <div className="mt-4">
                       <button
                         type="button"
-                        onClick={() => handleDeleteImport(i)}
-                        disabled={deletingImportId === i.id}
+                        onClick={() => handleDeleteValidation(v)}
+                        disabled={deletingValidationId === v.id}
                         className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                       >
-                        {deletingImportId === i.id ? "Suppression…" : "Retirer de la liste"}
+                        {deletingValidationId === v.id ? "Suppression…" : "Retirer de la liste"}
                       </button>
                     </div>
-                    {deleteError && deletingImportId === null && (
+                    {deleteError && deletingValidationId === null && (
                       <p role="alert" className="mt-3 text-xs font-medium text-red-600">
                         {deleteError}
                       </p>

@@ -14,7 +14,7 @@ import type { AdherentSaisonInput } from "@/lib/db";
  *  - licence = « Licence (€) ».
  */
 
-export function parseCsv(content: string, delimiter = ","): string[][] {
+export function parseCsv(content: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -37,7 +37,7 @@ export function parseCsv(content: string, delimiter = ","): string[][] {
       }
     } else if (char === '"') {
       inQuotes = true;
-    } else if (char === delimiter) {
+    } else if (char === ",") {
       row.push(field);
       field = "";
     } else if (char === "\n" || char === "\r") {
@@ -62,7 +62,7 @@ export function parseCsv(content: string, delimiter = ","): string[][] {
  * le point d'interrogation est donc conservé, seuls accents, casse, espaces,
  * parenthèses et symbole € disparaissent.
  */
-export function normalizeHeader(header: string): string {
+function normalizeHeader(header: string): string {
   return header
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
