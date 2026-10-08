@@ -1183,8 +1183,11 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
            count(*) FILTER (WHERE statut <> 'ajoute')::int AS a_traiter
     FROM partner_signups
     UNION ALL
+    -- Validés musculation = décharges validées en ligne + adhérents cochés
+    -- par le bureau (dossiers des saisons précédentes).
     SELECT 'musculation',
-           count(*) FILTER (WHERE statut = 'valide')::int,
+           (count(*) FILTER (WHERE statut = 'valide')
+             + (SELECT count(*) FROM musculation_validations_bureau))::int,
            count(*) FILTER (WHERE statut <> 'valide')::int
     FROM musculation_decharges
     UNION ALL
