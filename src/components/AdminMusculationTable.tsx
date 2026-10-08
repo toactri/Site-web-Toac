@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { MusculationDechargeRow } from "@/lib/db";
+import type { MusculationDechargeRow, MusculationImportRow } from "@/lib/db";
 import { documentHref, buildDechargeFileName } from "@/lib/documentUrl";
 
 /** Extension du certificat, qui peut être un PDF comme une image. */
@@ -15,6 +15,31 @@ function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
 }
+
+/** « 2024-09-15 » → « 15/09/2024 ». */
+function formatIsoDate(iso: string): string {
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+/** Décharge et certificat médical sont valables 3 ans. */
+function finValidite(iso: string): string {
+  const [year, month, day] = iso.split("-");
+  return formatIsoDate(`${Number(year) + 3}-${month}-${day}`);
+}
+
+function compareNoms(a: { nom: string; prenom: string }, b: { nom: string; prenom: string }): number {
+  return (
+    a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }) ||
+    a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" })
+  );
+}
+
+type Entree =
+  | { kind: "decharge"; key: string; nom: string; prenom: string; date: string; d: MusculationDechargeRow }
+  | { kind: "import"; key: string; nom: string; prenom: string; date: string; i: MusculationImportRow };
+
+type Tri = "nom" | "recent";
 
 const STATUT_LABELS: Record<string, string> = {
   en_attente: "En attente de validation par l'adhérent",
@@ -64,10 +89,17 @@ function NotificationEtat({ decharge: d }: { decharge: MusculationDechargeRow })
   return <span className="text-toac-blue-900/60">Transmission au bureau non tracée.</span>;
 }
 
-export default function AdminMusculationTable({ decharges }: { decharges: MusculationDechargeRow[] }) {
+export default function AdminMusculationTable({
+  decharges,
+  imports,
+}: {
+  decharges: MusculationDechargeRow[];
+  imports: MusculationImportRow[];
+}) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [tri, setTri] = useState<Tri>("nom");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -86,14 +118,47 @@ export default function AdminMusculationTable({ decharges }: { decharges: Muscul
     [decharges]
   );
 
+  const validesEnLigne = decharges.length - pendingCount;
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return decharges.filter((d) => {
-      if (!showPending && d.statut !== "valide") return false;
-      if (!query) return true;
-      return `${d.prenom} ${d.nom}`.toLowerCase().includes(query);
-    });
-  }, [decharges, search, showPending]);
+    const entrees: Entree[] = [
+      ...decharges
+        .filter((d) => showPending || d.statut === "valide")
+        .map((d): Entree => ({ kind: "decharge", key: `d${d.id}`, nom: d.nom, prenom: d.prenom, date: d.recue_le, d })),
+      ...imports.map(
+        (i): Entree => ({ kind: "import", key: `i${i.id}`, nom: i.nom, prenom: i.prenom, date: i.importe_le, i })
+      ),
+    ].filter((e) => !query || `${e.prenom} ${e.nom}`.toLowerCase().includes(query));
+    return entrees.sort((a, b) =>
+      tri === "nom" ? compareNoms(a, b) : b.date.localeCompare(a.date) || compareNoms(a, b)
+    );
+  }, [decharges, imports, search, showPending, tri]);
+
+  const [deletingImportId, setDeletingImportId] = useState<number | null>(null);
+
+  async function handleDeleteImport(i: MusculationImportRow) {
+    if (!window.confirm(`Retirer ${i.prenom} ${i.nom} de la liste des adhérents validés musculation ?`)) return;
+    setDeletingImportId(i.id);
+    setDeleteError(null);
+    try {
+      const response = await fetch("/api/admin/musculation/import/supprimer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: i.id }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setDeleteError(data?.error ?? "La suppression a échoué. Réessayez plus tard.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setDeleteError("Erreur réseau. Réessayez plus tard.");
+    } finally {
+      setDeletingImportId(null);
+    }
+  }
 
   async function copyReviewLink(d: MusculationDechargeRow) {
     const url = `${window.location.origin}/musculation/valider/${d.token}`;
@@ -177,26 +242,41 @@ export default function AdminMusculationTable({ decharges }: { decharges: Muscul
 
   return (
     <div>
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-toac-gray-200 bg-white p-4 shadow-sm">
-          <div className="font-display text-2xl text-toac-blue-950">{decharges.length}</div>
-          <div className="text-xs text-toac-blue-900/60">décharges reçues</div>
+          <div className="font-display text-2xl text-toac-blue-950">{validesEnLigne + imports.length}</div>
+          <div className="text-xs text-toac-blue-900/60">adhérents validés musculation</div>
         </div>
         <div className="rounded-lg border border-toac-gray-200 bg-white p-4 shadow-sm">
-          <div className="font-display text-2xl text-toac-blue-950">
-            {decharges.filter((d) => d.statut === "valide").length}
+          <div className="font-display text-2xl text-toac-blue-950">{validesEnLigne}</div>
+          <div className="text-xs text-toac-blue-900/60">
+            décharges validées en ligne{pendingCount > 0 && ` (+ ${pendingCount} en attente)`}
           </div>
-          <div className="text-xs text-toac-blue-900/60">validées par l&apos;adhérent</div>
+        </div>
+        <div className="rounded-lg border border-toac-gray-200 bg-white p-4 shadow-sm">
+          <div className="font-display text-2xl text-toac-blue-950">{imports.length}</div>
+          <div className="text-xs text-toac-blue-900/60">importés (dossiers des saisons précédentes)</div>
         </div>
       </div>
 
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Rechercher un nom…"
-        className="mb-3 w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30"
-      />
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher un nom…"
+          className="w-full rounded-md border border-toac-gray-200 px-3 py-2 outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30"
+        />
+        <select
+          value={tri}
+          onChange={(e) => setTri(e.target.value as Tri)}
+          aria-label="Trier la liste"
+          className="rounded-md border border-toac-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-toac-blue-600 focus:ring-2 focus:ring-toac-blue-600/30"
+        >
+          <option value="nom">Nom (A → Z)</option>
+          <option value="recent">Plus récents d&apos;abord</option>
+        </select>
+      </div>
 
       <label className="mb-4 flex items-center gap-2 text-sm text-toac-blue-900/80">
         <input
@@ -209,11 +289,83 @@ export default function AdminMusculationTable({ decharges }: { decharges: Muscul
       </label>
 
       <div className="space-y-3">
-        {filtered.map((d) => (
-          <div key={d.id} className="rounded-lg border border-toac-gray-200 bg-white shadow-sm">
+        {filtered.map((e) => {
+          if (e.kind === "import") {
+            const i = e.i;
+            return (
+              <div key={e.key} className="rounded-lg border border-toac-gray-200 bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setExpanded(expanded === e.key ? null : e.key)}
+                  className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
+                >
+                  <div>
+                    <div className="font-medium text-toac-blue-950">
+                      {i.prenom} {i.nom}
+                    </div>
+                    <div className="mt-1 text-xs text-toac-blue-900/60">
+                      Dossier transmis sur une saison précédente
+                      {i.date_dossier &&
+                        ` · du ${formatIsoDate(i.date_dossier)}, valable jusqu'au ${finValidite(i.date_dossier)}`}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                      Validée (import)
+                    </span>
+                    <span aria-hidden="true" className="text-toac-blue-900/50">
+                      {expanded === e.key ? "▲" : "▼"}
+                    </span>
+                  </div>
+                </button>
+                {expanded === e.key && (
+                  <div className="border-t border-toac-gray-100 px-4 py-4 text-sm">
+                    <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-toac-blue-900/60">Date de naissance</dt>
+                        <dd>{i.date_naissance ? formatIsoDate(i.date_naissance) : "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-toac-blue-900/60">Importé le</dt>
+                        <dd>{formatDate(i.importe_le)}</dd>
+                      </div>
+                      {i.commentaire && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-toac-blue-900/60">Commentaire</dt>
+                          <dd>{i.commentaire}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    <p className="mt-3 text-xs text-toac-blue-900/60">
+                      Décharge et certificat médical conservés hors du site (transmis avant la mise en place
+                      du formulaire en ligne).
+                    </p>
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImport(i)}
+                        disabled={deletingImportId === i.id}
+                        className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                      >
+                        {deletingImportId === i.id ? "Suppression…" : "Retirer de la liste"}
+                      </button>
+                    </div>
+                    {deleteError && deletingImportId === null && (
+                      <p role="alert" className="mt-3 text-xs font-medium text-red-600">
+                        {deleteError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          }
+          const d = e.d;
+          return (
+          <div key={e.key} className="rounded-lg border border-toac-gray-200 bg-white shadow-sm">
             <button
               type="button"
-              onClick={() => setExpanded(expanded === d.id ? null : d.id)}
+              onClick={() => setExpanded(expanded === e.key ? null : e.key)}
               className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
             >
               <div>
@@ -232,11 +384,11 @@ export default function AdminMusculationTable({ decharges }: { decharges: Muscul
                   {STATUT_LABELS[d.statut] ?? d.statut}
                 </span>
                 <span aria-hidden="true" className="text-toac-blue-900/50">
-                  {expanded === d.id ? "▲" : "▼"}
+                  {expanded === e.key ? "▲" : "▼"}
                 </span>
               </div>
             </button>
-            {expanded === d.id && (
+            {expanded === e.key && (
               <div className="border-t border-toac-gray-100 px-4 py-4 text-sm">
                 <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
                   <div><dt className="text-toac-blue-900/60">Nationalité</dt><dd>{d.nationalite}</dd></div>
@@ -326,7 +478,8 @@ export default function AdminMusculationTable({ decharges }: { decharges: Muscul
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
         {filtered.length === 0 && (
           <p className="rounded-lg border border-toac-gray-200 bg-white p-6 text-center text-toac-blue-900/60 shadow-sm">
             {!showPending && pendingCount > 0

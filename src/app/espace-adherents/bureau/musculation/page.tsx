@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { getMusculationDecharges, DatabaseNotConfiguredError, type MusculationDechargeRow } from "@/lib/db";
+import {
+  getMusculationDecharges,
+  getMusculationImports,
+  DatabaseNotConfiguredError,
+  type MusculationDechargeRow,
+  type MusculationImportRow,
+} from "@/lib/db";
 import AdminMusculationTable from "@/components/AdminMusculationTable";
+import MusculationImportForm from "@/components/MusculationImportForm";
 import DbSetupNotice from "@/components/DbSetupNotice";
 
 export const metadata: Metadata = {
@@ -16,13 +23,15 @@ export default async function BureauMusculationPage() {
   if (session.role !== "admin") redirect("/espace-adherents/dossier");
 
   let decharges: MusculationDechargeRow[];
+  let imports: MusculationImportRow[];
   let dbError = false;
   try {
-    decharges = await getMusculationDecharges();
+    [decharges, imports] = await Promise.all([getMusculationDecharges(), getMusculationImports()]);
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) {
       dbError = true;
       decharges = [];
+      imports = [];
     } else {
       throw error;
     }
@@ -35,10 +44,18 @@ export default async function BureauMusculationPage() {
       </h1>
       <p className="mt-4 text-toac-blue-900/80">
         Décharges signées et certificats médicaux transmis via la page « Musculation » — un lien devient
-        officiel une fois validé (relu et confirmé) par l&apos;adhérent.
+        officiel une fois validé (relu et confirmé) par l&apos;adhérent. Les adhérents dont le dossier a été
+        transmis sur une saison précédente (valable 3 ans) peuvent être importés ci-dessous.
       </p>
       <div className="mt-8">
-        {dbError ? <DbSetupNotice /> : <AdminMusculationTable decharges={decharges} />}
+        {dbError ? (
+          <DbSetupNotice />
+        ) : (
+          <>
+            <MusculationImportForm />
+            <AdminMusculationTable decharges={decharges} imports={imports} />
+          </>
+        )}
       </div>
     </div>
   );

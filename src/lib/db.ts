@@ -189,6 +189,25 @@ function ensureSchema(): Promise<void> {
           ADD COLUMN IF NOT EXISTS notification_destinataires TEXT[] NOT NULL DEFAULT '{}',
           ADD COLUMN IF NOT EXISTS notification_erreur TEXT;
 
+        -- Adhérents déjà autorisés à la salle de musculation avant la mise en
+        -- ligne de la décharge (décharge et certificat transmis au club sur
+        -- une saison précédente, valables 3 ans) : importés depuis la vue
+        -- bureau pour apparaître comme validés sans redemander les documents.
+        -- La date de naissance est facultative ; un même adhérent (nom,
+        -- prénom, date de naissance) n'a qu'une ligne, mise à jour à chaque
+        -- nouvel import.
+        CREATE TABLE IF NOT EXISTS musculation_validations_importees (
+          id SERIAL PRIMARY KEY,
+          importe_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          nom TEXT NOT NULL,
+          prenom TEXT NOT NULL,
+          name_key TEXT NOT NULL,
+          date_naissance TEXT NOT NULL DEFAULT '',
+          date_dossier TEXT,
+          commentaire TEXT,
+          UNIQUE (name_key, date_naissance)
+        );
+
         -- Adhérents d'une saison, importés depuis l'onglet « Dossiers
         -- adhésion » du Google Sheets (Bureau → Attestations). Sert à vérifier
         -- l'adhésion et à reprendre les montants payés sur l'attestation. Un
@@ -739,6 +758,89 @@ export async function getMusculationDecharges(): Promise<MusculationDechargeRow[
     "SELECT * FROM musculation_decharges ORDER BY recue_le DESC"
   );
   return rows;
+}
+
+/** Adhérent validé pour la musculation sur une saison précédente, hors formulaire en ligne. */
+export interface MusculationImportInput {
+  nom: string;
+  prenom: string;
+  /** Date ISO « AAAA-MM-JJ », ou chaîne vide si inconnue. */
+  dateNaissance: string;
+  /** Date ISO de la décharge / du certificat transmis, si connue. */
+  dateDossier: string | null;
+  commentaire: string | null;
+}
+
+export interface MusculationImportRow {
+  id: number;
+  importe_le: string;
+  nom: string;
+  prenom: string;
+  name_key: string;
+  date_naissance: string;
+  date_dossier: string | null;
+  commentaire: string | null;
+}
+
+/**
+ * Ajoute (ou met à jour) les adhérents importés, dans une seule transaction.
+ * Un nouvel import ne retire personne : on complète la liste, la suppression
+ * se fait ligne par ligne depuis la vue bureau. Renvoie le nombre de lignes
+ * créées et mises à jour.
+ */
+export async function upsertMusculationImports(
+  adherents: MusculationImportInput[]
+): Promise<{ ajoutes: number; misAJour: number }> {
+  await ensureSchema();
+  const client = await getPool().connect();
+  let ajoutes = 0;
+  let misAJour = 0;
+  try {
+    await client.query("BEGIN");
+    for (const a of adherents) {
+      const { rows } = await client.query<{ inserted: boolean }>(
+        `
+        INSERT INTO musculation_validations_importees (
+          nom, prenom, name_key, date_naissance, date_dossier, commentaire
+        ) VALUES ($1,$2,$3,$4,$5,$6)
+        ON CONFLICT (name_key, date_naissance) DO UPDATE SET
+          nom = EXCLUDED.nom,
+          prenom = EXCLUDED.prenom,
+          date_dossier = COALESCE(EXCLUDED.date_dossier, musculation_validations_importees.date_dossier),
+          commentaire = COALESCE(EXCLUDED.commentaire, musculation_validations_importees.commentaire),
+          importe_le = now()
+        RETURNING (xmax = 0) AS inserted
+        `,
+        [a.nom, a.prenom, nameKey(a.prenom, a.nom), a.dateNaissance, a.dateDossier, a.commentaire]
+      );
+      if (rows[0]?.inserted) ajoutes++;
+      else misAJour++;
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+  return { ajoutes, misAJour };
+}
+
+export async function getMusculationImports(): Promise<MusculationImportRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<MusculationImportRow>(
+    "SELECT * FROM musculation_validations_importees ORDER BY lower(nom), lower(prenom)"
+  );
+  return rows;
+}
+
+export async function deleteMusculationImport(id: number): Promise<MusculationImportRow | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<MusculationImportRow>(
+    "DELETE FROM musculation_validations_importees WHERE id = $1 RETURNING *",
+    [id]
+  );
+  return rows[0] ?? null;
 }
 
 export interface AdherentSaisonInput {
