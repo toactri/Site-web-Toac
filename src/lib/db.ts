@@ -281,6 +281,28 @@ function ensureSchema(): Promise<void> {
           modifie_le TIMESTAMPTZ NOT NULL DEFAULT now()
         );
 
+        -- Demandes de connexion à l'espace adhérents par email (lien + code
+        -- à 6 chiffres, sans mot de passe). Seules des empreintes du lien et
+        -- du code sont stockées : une fuite de la table ne permet pas de se
+        -- connecter. Une ligne sert une seule fois et expire au bout de
+        -- quelques minutes ; les lignes périmées sont purgées au fil de l'eau.
+        CREATE TABLE IF NOT EXISTS connexion_jetons (
+          id SERIAL PRIMARY KEY,
+          cree_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          demande TEXT NOT NULL UNIQUE,
+          lien_hash TEXT NOT NULL UNIQUE,
+          code_hash TEXT NOT NULL,
+          email TEXT NOT NULL,
+          nom_affiche TEXT NOT NULL,
+          role TEXT NOT NULL,
+          suivant TEXT,
+          tentatives INTEGER NOT NULL DEFAULT 0,
+          expire_le TIMESTAMPTZ NOT NULL,
+          utilise_le TIMESTAMPTZ
+        );
+        CREATE INDEX IF NOT EXISTS connexion_jetons_email
+          ON connexion_jetons (email, cree_le);
+
         CREATE TABLE IF NOT EXISTS members (
           id SERIAL PRIMARY KEY,
           first_name TEXT NOT NULL,
@@ -1602,6 +1624,118 @@ export async function deleteMember(id: string): Promise<void> {
 }
 
 /** Ferme la connexion — à appeler en fin d'exécution des scripts CLI (import CSV…). */
+/** Adhérent de la saison dont l'email du dossier correspond (casse et espaces ignorés). */
+export async function findAdherentSaisonByEmail(saison: string, email: string): Promise<AdherentSaisonRow | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AdherentSaisonRow>(
+    `
+    SELECT * FROM adherents_saison
+    WHERE saison = $1 AND lower(btrim(email)) = lower(btrim($2))
+    ORDER BY id
+    LIMIT 1
+    `,
+    [saison, email]
+  );
+  return rows[0] ?? null;
+}
+
+export interface ConnexionJetonRow {
+  id: number;
+  demande: string;
+  code_hash: string;
+  email: string;
+  nom_affiche: string;
+  role: "member" | "admin";
+  suivant: string | null;
+}
+
+/** Demandes de connexion récentes pour cet email (limite d'envoi), et la plus récente. */
+export async function getRecentConnexionJetons(
+  email: string,
+  minutes: number
+): Promise<{ count: number; derniereDemande: string | null }> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ demande: string }>(
+    `
+    SELECT demande FROM connexion_jetons
+    WHERE email = $1 AND cree_le > now() - make_interval(mins => $2)
+    ORDER BY cree_le DESC
+    `,
+    [email, minutes]
+  );
+  return { count: rows.length, derniereDemande: rows[0]?.demande ?? null };
+}
+
+export async function insertConnexionJeton(j: {
+  demande: string;
+  lienHash: string;
+  codeHash: string;
+  email: string;
+  nomAffiche: string;
+  role: "member" | "admin";
+  suivant: string | null;
+  minutes: number;
+}): Promise<void> {
+  await ensureSchema();
+  const pool = getPool();
+  // Purge des demandes périmées depuis plus d'un jour : la table reste minuscule.
+  await pool.query("DELETE FROM connexion_jetons WHERE expire_le < now() - interval '1 day'");
+  await pool.query(
+    `
+    INSERT INTO connexion_jetons (demande, lien_hash, code_hash, email, nom_affiche, role, suivant, expire_le)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, now() + make_interval(mins => $8))
+    `,
+    [j.demande, j.lienHash, j.codeHash, j.email, j.nomAffiche, j.role, j.suivant, j.minutes]
+  );
+}
+
+/** Consomme une demande par son lien : une seule fois, et seulement avant expiration. */
+export async function consumeConnexionLien(lienHash: string): Promise<ConnexionJetonRow | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<ConnexionJetonRow>(
+    `
+    UPDATE connexion_jetons SET utilise_le = now()
+    WHERE lien_hash = $1 AND utilise_le IS NULL AND expire_le > now()
+    RETURNING id, demande, code_hash, email, nom_affiche, role, suivant
+    `,
+    [lienHash]
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Compte une tentative de code sur toutes les demandes encore utilisables
+ * (non consommées, non expirées, sous le nombre maximal d'essais) de l'email
+ * auquel appartient `demande`, et les renvoie. Le code reçu dans un email
+ * précédent reste ainsi valable si l'adhérent en a redemandé un entre-temps.
+ */
+export async function recordConnexionCodeAttempt(
+  demande: string,
+  maxTentatives: number
+): Promise<ConnexionJetonRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<ConnexionJetonRow>(
+    `
+    UPDATE connexion_jetons SET tentatives = tentatives + 1
+    WHERE email = (SELECT email FROM connexion_jetons WHERE demande = $1)
+      AND utilise_le IS NULL AND expire_le > now() AND tentatives < $2
+    RETURNING id, demande, code_hash, email, nom_affiche, role, suivant
+    `,
+    [demande, maxTentatives]
+  );
+  return rows;
+}
+
+/** Marque la demande comme utilisée ; false si elle l'a déjà été entre-temps. */
+export async function markConnexionJetonUsed(id: number): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await getPool().query(
+    "UPDATE connexion_jetons SET utilise_le = now() WHERE id = $1 AND utilise_le IS NULL",
+    [id]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 export async function closeDb(): Promise<void> {
   if (pool) await pool.end();
 }

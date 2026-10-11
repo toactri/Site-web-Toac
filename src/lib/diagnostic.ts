@@ -20,6 +20,7 @@ export const WATCHED_VARS: { name: string; role: string }[] = [
   { name: "SESSION_SECRET", role: "Signature des cookies de l'espace adhérents" },
   { name: "ADMIN_USERNAME", role: "Identifiant du compte bureau" },
   { name: "ADMIN_PASSWORD", role: "Mot de passe du compte bureau" },
+  { name: "ADMIN_EMAILS", role: "Emails du bureau (connexion par email avec le rôle bureau)" },
   { name: "BREVO_API_KEY", role: "Envoi des emails (contact, notifications musculation et partenariat)" },
   { name: "MUSCULATION_NOTIFICATION_EMAILS", role: "Destinataires de la notification musculation" },
   {

@@ -32,6 +32,6 @@ export async function POST(request: NextRequest) {
     name: account.name,
     role: account.role,
   });
-  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
+  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(account.role));
   return response;
 }

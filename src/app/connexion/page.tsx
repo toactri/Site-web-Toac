@@ -21,13 +21,14 @@ function ConnexionContent() {
         Espace Adhérents
       </h1>
       <p className="mt-4 text-sm text-toac-blue-900/80">
-        Cette page est réservée aux adhérents du TOAC Triathlon. Connectez-vous avec les
-        identifiants transmis par le bureau du club.
+        Cette page est réservée aux adhérents du TOAC Triathlon. Pas de compte à créer : connectez-vous
+        avec l&apos;adresse email utilisée pour votre adhésion au club.
       </p>
       <div className="mt-8 rounded-lg border border-toac-gray-200 bg-white p-6 shadow-sm">
         <LoginForm
-          onSuccess={() => {
-            router.push(next);
+          next={next}
+          onSuccess={(info) => {
+            router.push(info.next ?? next);
             router.refresh();
           }}
         />

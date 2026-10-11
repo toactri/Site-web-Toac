@@ -98,12 +98,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
               </button>
             </div>
             <p className="mb-4 text-sm text-toac-blue-900/80">
-              Cette section est réservée aux adhérents. Connectez-vous pour continuer.
+              Cette section est réservée aux adhérents. Connectez-vous avec l&apos;adresse email utilisée pour votre adhésion au club.
             </p>
             <LoginForm
-              onSuccess={async () => {
+              next={modalNext || undefined}
+              onSuccess={async (info) => {
                 await refresh();
-                const next = modalNext;
+                const next = info.next ?? modalNext;
                 setModalNext(null);
                 if (next) router.push(next);
               }}

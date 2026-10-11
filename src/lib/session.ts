@@ -3,7 +3,16 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 
 export const SESSION_COOKIE = "toac_session";
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8; // 8 hours
+/**
+ * Durée de session par rôle. Les adhérents se connectent par lien ou code
+ * envoyé par email, sans mot de passe : une session longue leur évite de
+ * redemander un email à chaque visite. Le bureau garde une durée plus courte,
+ * ses droits étant plus étendus.
+ */
+const SESSION_MAX_AGE_SECONDS: Record<SessionRole, number> = {
+  member: 60 * 60 * 24 * 60, // 60 jours
+  admin: 60 * 60 * 24 * 7, // 7 jours
+};
 
 export type SessionRole = "member" | "admin";
 
@@ -44,7 +53,7 @@ export function createSessionToken(
 ): string {
   const full: SessionPayload = {
     ...payload,
-    exp: Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
+    exp: Date.now() + SESSION_MAX_AGE_SECONDS[payload.role] * 1000,
   };
   const payloadB64 = base64url(Buffer.from(JSON.stringify(full), "utf8"));
   const signature = sign(payloadB64);
@@ -82,10 +91,13 @@ export async function getSession(): Promise<SessionPayload | null> {
   return verifySessionToken(store.get(SESSION_COOKIE)?.value);
 }
 
-export const sessionCookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  path: "/",
-  maxAge: SESSION_MAX_AGE_SECONDS,
-};
+/** Options du cookie de session, dont la durée suit celle du jeton du rôle. */
+export function sessionCookieOptions(role: SessionRole) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS[role],
+  };
+}
