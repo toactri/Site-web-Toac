@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getCmsCatalog, getCmsPageBlocks } from "@/lib/cms";
@@ -52,6 +53,14 @@ export default async function DocumentsPage() {
       <h1 className="section-title font-display text-3xl uppercase text-toac-blue-950">
         Documents & infos internes
       </h1>
+
+      <Link
+        href="/espace-adherents/tdl-2027"
+        className="mt-8 block rounded-md border border-toac-gray-200 border-l-4 border-l-toac-pink-500 bg-white px-4 py-3 text-sm shadow-sm hover:bg-toac-gray-50"
+      >
+        <span className="font-medium text-toac-blue-950">Triathlons du Lauragais 2027 : réunion de lancement</span>
+        <span className="block text-toac-blue-900/70">Bilan 2026, pôles, rôles, missions et comment s&apos;investir.</span>
+      </Link>
 
       <div className="mt-8 space-y-4">
         {pageBlocks?.map((block) => (
