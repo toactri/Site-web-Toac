@@ -18,6 +18,12 @@ export interface RubriqueCompteRendu {
 }
 
 export const RUBRIQUES: RubriqueCompteRendu[] = [
+  {
+    titre: "Championnats du Monde - Coupe du Monde",
+    detail: "",
+    id: "1LOegalMYLKLVx48qiPI005er6gKdoGfj",
+    prefixe: "",
+  },
   { titre: "Ironman", detail: "Hawaï, Tours…", id: "1FTOuEh7bGVUxyMTCvj8XJLnTmqBAUzJB", prefixe: "IM" },
   { titre: "Embrunman", detail: "Le mythe haut-alpin.", id: "1B96bKMK0Z_ozSryVelFjOCemnNXWmm9v", prefixe: "Embrunman" },
   { titre: "Altriman", detail: "Half et Olympic.", id: "1W_XnJqoCv7ibJOuGw7qauDjyGNiKvyhf", prefixe: "Altriman" },
