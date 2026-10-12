@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlocks";
 import { CmsEditableText, CmsEditPencil, CmsAddTile } from "@/components/cms-edit";
+import Accordion from "@/components/Accordion";
 import AccordionBlock from "@/components/AccordionBlock";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, getCmsTrainingSessions, type CmsPageBlock } from "@/lib/cms";
@@ -109,37 +110,39 @@ function openrunnerEmbedUrl(text: string): string | null {
   }
 }
 
-function TextSection({ slot, block }: { slot: string; block?: CmsPageBlock }) {
-  const fallback = DEFAULT_SECTIONS[slot];
-
-  if (block?.block_type === "accordion") {
-    return <AccordionBlock block={block} className="scroll-mt-24" />;
+/**
+ * Section repliable : le bloc CMS s'il existe, sinon le texte par défaut
+ * (CMS injoignable, ou bloc pas encore créé). `children` s'affiche sous le
+ * texte, dans le panneau (ex. la carte du parcours sous le test chrono).
+ */
+function SlotAccordion({
+  slot,
+  block,
+  defaultOpen,
+  children,
+}: {
+  slot: string;
+  block?: CmsPageBlock;
+  defaultOpen?: boolean;
+  children?: ReactNode;
+}) {
+  if (block) {
+    return (
+      <AccordionBlock block={{ ...block, anchor: block.anchor || slot }} defaultOpen={defaultOpen}>
+        {children}
+      </AccordionBlock>
+    );
   }
-
+  const fallback = DEFAULT_SECTIONS[slot];
   return (
-    <section id={slot} className="scroll-mt-24 border-t border-toac-gray-200 pt-8 first:border-0 first:pt-0">
-      {block ? (
-        <CmsEditableText
-          as="h2"
-          value={block.heading}
-          target={{ kind: "block", id: block.id, field: "heading" }}
-          className="font-display text-lg uppercase text-toac-blue-950"
-        />
-      ) : (
-        <h2 className="font-display text-lg uppercase text-toac-blue-950">{fallback.heading}</h2>
-      )}
-      {block ? (
-        <CmsEditableText
-          as="div"
-          value={block.body}
-          target={{ kind: "block", id: block.id, field: "body" }}
-          multiline
-          className="mt-3 block space-y-3 whitespace-pre-line text-sm text-toac-blue-900/90"
-        />
-      ) : (
-        <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">{renderRichText(fallback.body)}</div>
-      )}
-    </section>
+    <Accordion
+      anchor={slot}
+      defaultOpen={defaultOpen}
+      title={<span className="font-display text-lg uppercase text-toac-blue-950">{fallback.heading}</span>}
+    >
+      <div className="space-y-3">{renderRichText(fallback.body)}</div>
+      {children}
+    </Accordion>
   );
 }
 
@@ -157,7 +160,12 @@ export default async function VeloPage() {
 
   const missingSlots: EnsureBlockSpec[] = Object.entries(DEFAULT_SECTIONS)
     .filter(([slot]) => !blockBySlot.has(slot) && !hiddenSlots.has(slot))
-    .map(([slot, s]) => ({ slot, heading: s.heading, body: s.body }));
+    .map(([slot, s]) => ({
+      slot,
+      heading: s.heading,
+      body: s.body,
+      ...(slot === PARCOURS_SLOT ? {} : { block_type: "accordion" }),
+    }));
 
   const parcoursBlock = blockBySlot.get(PARCOURS_SLOT);
   const parcoursUrl = hiddenSlots.has(PARCOURS_SLOT)
@@ -169,8 +177,37 @@ export default async function VeloPage() {
   const knownSlots = new Set(Object.keys(DEFAULT_SECTIONS));
   const extraBlocks = (cmsBlocks ?? []).filter((b) => !b.slot || !knownSlots.has(b.slot));
 
-  const textSection = (slot: string) =>
-    hiddenSlots.has(slot) ? null : <TextSection key={slot} slot={slot} block={blockBySlot.get(slot)} />;
+  // Carte Openrunner : affichée dans l'accordéon du test chrono (déplié par
+  // défaut), ou dans son propre accordéon si le bloc test chrono est masqué.
+  const parcours = parcoursUrl && (
+    <div className="relative mt-6">
+      {parcoursBlock && (
+        <CmsEditPencil
+          payload={{ type: "edit-block", blockId: parcoursBlock.id }}
+          className="absolute -right-2 -top-2 h-6 w-6 text-[10px]"
+        />
+      )}
+      {parcoursBlock ? (
+        <CmsEditableText
+          as="h3"
+          value={parcoursHeading}
+          target={{ kind: "block", id: parcoursBlock.id, field: "heading" }}
+          className="font-display text-base uppercase text-toac-blue-950"
+        />
+      ) : (
+        <h3 className="font-display text-base uppercase text-toac-blue-950">{parcoursHeading}</h3>
+      )}
+      <iframe
+        title={parcoursHeading}
+        src={parcoursUrl}
+        width="100%"
+        height="650"
+        loading="lazy"
+        className="mt-3 w-full rounded-lg border-0"
+      />
+    </div>
+  );
+  const testChronoHidden = hiddenSlots.has(TEST_CHRONO_SLOT);
 
   return (
     <Suspense fallback={null}>
@@ -178,46 +215,41 @@ export default async function VeloPage() {
         <EnsureCmsBlocks slug="velo" blocks={missingSlots} />
         <h1 className="section-title font-display text-3xl uppercase text-toac-blue-950">Vélo</h1>
 
-        <div className="mt-10 space-y-8">
+        <div className="mt-10 space-y-4">
           {creneauxTable && (
-            <section id="velo-creneaux" className="scroll-mt-24">
-              <h2 className="font-display text-lg uppercase text-toac-blue-950">Créneaux d&apos;entraînement</h2>
-              <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">{renderRichText(creneauxTable)}</div>
+            <Accordion
+              anchor="velo-creneaux"
+              title={<span className="font-display text-lg uppercase text-toac-blue-950">Créneaux d&apos;entraînement</span>}
+            >
+              <div className="space-y-3">{renderRichText(creneauxTable)}</div>
               <p className="mt-2 text-xs text-toac-blue-900/70">
-                Détails et lieux de rendez-vous : <Link href="/entrainements" className="underline hover:text-toac-pink-500">planning de la semaine</Link>.
+                Détails et lieux de rendez-vous :{" "}
+                <Link href="/entrainements" className="underline hover:text-toac-pink-500">
+                  planning de la semaine
+                </Link>
+                .
               </p>
-            </section>
+            </Accordion>
           )}
 
-          {TEXT_SLOTS.map(textSection)}
+          {TEXT_SLOTS.filter((slot) => !hiddenSlots.has(slot)).map((slot) => (
+            <SlotAccordion
+              key={slot}
+              slot={slot}
+              block={blockBySlot.get(slot)}
+              defaultOpen={slot === TEST_CHRONO_SLOT}
+            >
+              {slot === TEST_CHRONO_SLOT ? parcours : null}
+            </SlotAccordion>
+          ))}
 
-          {parcoursUrl && (
-            <section id={PARCOURS_SLOT} className="relative scroll-mt-24 border-t border-toac-gray-200 pt-8">
-              {parcoursBlock ? (
-                <>
-                  <CmsEditPencil
-                    payload={{ type: "edit-block", blockId: parcoursBlock.id }}
-                    className="absolute -right-2 top-6 h-6 w-6 text-[10px]"
-                  />
-                  <CmsEditableText
-                    as="h2"
-                    value={parcoursHeading}
-                    target={{ kind: "block", id: parcoursBlock.id, field: "heading" }}
-                    className="font-display text-lg uppercase text-toac-blue-950"
-                  />
-                </>
-              ) : (
-                <h2 className="font-display text-lg uppercase text-toac-blue-950">{parcoursHeading}</h2>
-              )}
-              <iframe
-                title={parcoursHeading}
-                src={parcoursUrl}
-                width="100%"
-                height="650"
-                loading="lazy"
-                className="mt-3 w-full rounded-lg border-0"
-              />
-            </section>
+          {testChronoHidden && parcours && (
+            <Accordion
+              anchor={PARCOURS_SLOT}
+              title={<span className="font-display text-lg uppercase text-toac-blue-950">{parcoursHeading}</span>}
+            >
+              {parcours}
+            </Accordion>
           )}
 
           {extraBlocks.map((block) =>
