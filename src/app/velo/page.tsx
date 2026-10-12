@@ -7,6 +7,8 @@ import { CmsEditableText, CmsEditPencil, CmsAddTile } from "@/components/cms-edi
 import Accordion from "@/components/Accordion";
 import AccordionBlock from "@/components/AccordionBlock";
 import PageTabs, { type PageTab } from "@/components/PageTabs";
+import MembersOnlyNotice from "@/components/MembersOnlyNotice";
+import { getSession } from "@/lib/session";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, getCmsTrainingSessions, type CmsPageBlock } from "@/lib/cms";
 import { sportSlotsTableWithLocation } from "@/lib/training";
@@ -132,7 +134,8 @@ function SlotAccordion({
 }
 
 export default async function VeloPage() {
-  const [cmsBlocks, hiddenBlocks, trainingSessions] = await Promise.all([
+  const [session, cmsBlocks, hiddenBlocks, trainingSessions] = await Promise.all([
+    getSession(),
     getCmsPageBlocks("velo"),
     getCmsHiddenBlocks("velo"),
     getCmsTrainingSessions(),
@@ -233,7 +236,10 @@ export default async function VeloPage() {
     tabs.push({
       id: "tests-chrono",
       label: "Tests chrono",
-      content: (
+      // Réservé aux adhérents (emails et téléphones des encadrants).
+      content: !session ? (
+        <MembersOnlyNotice title="Tests chrono" returnTo="/velo#tests-chrono" />
+      ) : (
         <div className="space-y-4">
           {slotAccordion(TEST_CHRONO_SLOT)}
           {testChronoHidden && parcours && (

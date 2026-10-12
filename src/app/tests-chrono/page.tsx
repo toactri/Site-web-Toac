@@ -6,7 +6,7 @@ import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlo
 import { CmsEditableText, CmsAddTile } from "@/components/cms-edit";
 import Accordion from "@/components/Accordion";
 import AccordionBlock from "@/components/AccordionBlock";
-import MemberOnlyTeaser from "@/components/MemberOnlyTeaser";
+import MembersOnlyNotice from "@/components/MembersOnlyNotice";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, type CmsPageBlock } from "@/lib/cms";
 import { openrunnerEmbedUrl } from "@/lib/openrunner";
@@ -157,10 +157,8 @@ export default async function TestsChronoPage() {
               })}
             </div>
           ) : (
-            <MemberOnlyTeaser
-              text="Les modalités détaillées de chaque test (horaires, parcours, inscriptions) sont accessibles aux adhérents connectés."
-              returnTo="/tests-chrono"
-            />
+            // Emails et téléphones des encadrants : jamais envoyés aux visiteurs.
+            <MembersOnlyNotice title="Modalités des tests" returnTo="/tests-chrono" />
           )}
 
           {extraBlocks.map((block) =>

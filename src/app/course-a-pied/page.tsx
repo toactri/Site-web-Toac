@@ -6,6 +6,8 @@ import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlo
 import { CmsEditableText, CmsAddTile } from "@/components/cms-edit";
 import AccordionBlock from "@/components/AccordionBlock";
 import PageTabs, { type PageTab } from "@/components/PageTabs";
+import MembersOnlyNotice from "@/components/MembersOnlyNotice";
+import { getSession } from "@/lib/session";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, getCmsTrainingSessions, type CmsPageBlock } from "@/lib/cms";
 import { sportSlotsTableWithLocation } from "@/lib/training";
@@ -79,7 +81,8 @@ function TextSection({ slot, block }: { slot: string; block?: CmsPageBlock }) {
 }
 
 export default async function CourseAPiedPage() {
-  const [cmsBlocks, hiddenBlocks, trainingSessions] = await Promise.all([
+  const [session, cmsBlocks, hiddenBlocks, trainingSessions] = await Promise.all([
+    getSession(),
     getCmsPageBlocks("course-a-pied"),
     getCmsHiddenBlocks("course-a-pied"),
     getCmsTrainingSessions(),
@@ -118,7 +121,12 @@ export default async function CourseAPiedPage() {
     tabs.push({
       id: "tests-chrono",
       label: "Tests chrono",
-      content: <TextSection slot={TESTS_CHRONO_SLOT} block={blockBySlot.get(TESTS_CHRONO_SLOT)} />,
+      // Réservé aux adhérents (emails et téléphones des encadrants).
+      content: session ? (
+        <TextSection slot={TESTS_CHRONO_SLOT} block={blockBySlot.get(TESTS_CHRONO_SLOT)} />
+      ) : (
+        <MembersOnlyNotice title="Tests chrono" returnTo="/course-a-pied#tests-chrono" />
+      ),
     });
   }
 

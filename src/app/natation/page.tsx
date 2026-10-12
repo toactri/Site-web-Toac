@@ -5,6 +5,8 @@ import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlo
 import { CmsEditableText, CmsEditableImage, CmsEditPencil, CmsAddTile } from "@/components/cms-edit";
 import AccordionBlock from "@/components/AccordionBlock";
 import PageTabs, { type PageTab } from "@/components/PageTabs";
+import MembersOnlyNotice from "@/components/MembersOnlyNotice";
+import { getSession } from "@/lib/session";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, getCmsTrainingSessions, type CmsPageBlock } from "@/lib/cms";
 import { sportSlotsTableWithLocation } from "@/lib/training";
@@ -74,7 +76,8 @@ function TextSection({ slot, block }: { slot: string; block?: CmsPageBlock }) {
 }
 
 export default async function NatationPage() {
-  const [cmsBlocks, hiddenBlocks, trainingSessions] = await Promise.all([
+  const [session, cmsBlocks, hiddenBlocks, trainingSessions] = await Promise.all([
+    getSession(),
     getCmsPageBlocks("natation"),
     getCmsHiddenBlocks("natation"),
     getCmsTrainingSessions(),
@@ -153,7 +156,10 @@ export default async function NatationPage() {
     tabs.push({
       id: "tests",
       label: "Tests chrono",
-      content: (
+      // Réservé aux adhérents (emails et téléphones des encadrants).
+      content: !session ? (
+        <MembersOnlyNotice title="Tests chrono" returnTo="/natation#tests" />
+      ) : (
         <div className="space-y-4">
           {testBlocks.map((block) =>
             block.block_type === "accordion" ? (
