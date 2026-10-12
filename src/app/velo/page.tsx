@@ -6,6 +6,7 @@ import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlo
 import { CmsEditableText, CmsEditPencil, CmsAddTile } from "@/components/cms-edit";
 import Accordion from "@/components/Accordion";
 import AccordionBlock from "@/components/AccordionBlock";
+import PageTabs, { type PageTab } from "@/components/PageTabs";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, getCmsTrainingSessions, type CmsPageBlock } from "@/lib/cms";
 import { sportSlotsTableWithLocation } from "@/lib/training";
@@ -92,7 +93,6 @@ const DEFAULT_SECTIONS: Record<string, { heading: string; body: string }> = {
   },
 };
 
-const TEXT_SLOTS = [OBLIGATOIRE_SLOT, RECOMMANDE_SLOT, CONSIGNES_SLOT, TEST_CHRONO_SLOT];
 
 /**
  * Adresse Openrunner à afficher dans l'iframe, extraite du texte du bloc :
@@ -173,7 +173,7 @@ export default async function VeloPage() {
     : openrunnerEmbedUrl(parcoursBlock ? parcoursBlock.body : DEFAULT_PARCOURS_URL);
   const parcoursHeading = parcoursBlock?.heading ?? DEFAULT_SECTIONS[PARCOURS_SLOT].heading;
 
-  // Blocs ajoutés depuis le dashboard ("+ Ajouter un bloc"), affichés à la suite.
+  // Blocs ajoutés depuis le dashboard ("+ Ajouter un bloc"), affichés sous les onglets.
   const knownSlots = new Set(Object.keys(DEFAULT_SECTIONS));
   const extraBlocks = (cmsBlocks ?? []).filter((b) => !b.slot || !knownSlots.has(b.slot));
 
@@ -208,6 +208,62 @@ export default async function VeloPage() {
     </div>
   );
   const testChronoHidden = hiddenSlots.has(TEST_CHRONO_SLOT);
+  const slotAccordion = (slot: string) =>
+    hiddenSlots.has(slot) ? null : (
+      <SlotAccordion key={slot} slot={slot} block={blockBySlot.get(slot)} defaultOpen={slot === TEST_CHRONO_SLOT}>
+        {slot === TEST_CHRONO_SLOT ? parcours : null}
+      </SlotAccordion>
+    );
+
+  const tabs: PageTab[] = [
+    {
+      id: "creneaux",
+      label: "Créneaux",
+      content: (
+        <section id="velo-creneaux" className="scroll-mt-24">
+          <h2 className="font-display text-lg uppercase text-toac-blue-950">Créneaux d&apos;entraînement</h2>
+          <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">
+            {creneauxTable ? renderRichText(creneauxTable) : <p>Les créneaux sont affichés dans le planning de la semaine.</p>}
+          </div>
+          <p className="mt-2 text-xs text-toac-blue-900/70">
+            Détails et lieux de rendez-vous :{" "}
+            <Link href="/entrainements" className="underline hover:text-toac-pink-500">
+              planning de la semaine
+            </Link>
+            .
+          </p>
+        </section>
+      ),
+    },
+  ];
+  const materielSlots = [OBLIGATOIRE_SLOT, RECOMMANDE_SLOT, CONSIGNES_SLOT].filter((slot) => !hiddenSlots.has(slot));
+  if (materielSlots.length > 0) {
+    tabs.push({
+      id: "materiel",
+      label: "Matériel et consignes",
+      content: <div className="space-y-4">{materielSlots.map(slotAccordion)}</div>,
+    });
+  }
+  if (!testChronoHidden || parcours) {
+    tabs.push({
+      id: "tests-chrono",
+      label: "Tests chrono",
+      content: (
+        <div className="space-y-4">
+          {slotAccordion(TEST_CHRONO_SLOT)}
+          {testChronoHidden && parcours && (
+            <Accordion
+              anchor={PARCOURS_SLOT}
+              defaultOpen
+              title={<span className="font-display text-lg uppercase text-toac-blue-950">{parcoursHeading}</span>}
+            >
+              {parcours}
+            </Accordion>
+          )}
+        </div>
+      ),
+    });
+  }
 
   return (
     <Suspense fallback={null}>
@@ -215,43 +271,11 @@ export default async function VeloPage() {
         <EnsureCmsBlocks slug="velo" blocks={missingSlots} />
         <h1 className="section-title font-display text-3xl uppercase text-toac-blue-950">Vélo</h1>
 
-        <div className="mt-10 space-y-4">
-          {creneauxTable && (
-            <Accordion
-              anchor="velo-creneaux"
-              title={<span className="font-display text-lg uppercase text-toac-blue-950">Créneaux d&apos;entraînement</span>}
-            >
-              <div className="space-y-3">{renderRichText(creneauxTable)}</div>
-              <p className="mt-2 text-xs text-toac-blue-900/70">
-                Détails et lieux de rendez-vous :{" "}
-                <Link href="/entrainements" className="underline hover:text-toac-pink-500">
-                  planning de la semaine
-                </Link>
-                .
-              </p>
-            </Accordion>
-          )}
+        <div className="mt-10">
+          <PageTabs tabs={tabs} />
+        </div>
 
-          {TEXT_SLOTS.filter((slot) => !hiddenSlots.has(slot)).map((slot) => (
-            <SlotAccordion
-              key={slot}
-              slot={slot}
-              block={blockBySlot.get(slot)}
-              defaultOpen={slot === TEST_CHRONO_SLOT}
-            >
-              {slot === TEST_CHRONO_SLOT ? parcours : null}
-            </SlotAccordion>
-          ))}
-
-          {testChronoHidden && parcours && (
-            <Accordion
-              anchor={PARCOURS_SLOT}
-              title={<span className="font-display text-lg uppercase text-toac-blue-950">{parcoursHeading}</span>}
-            >
-              {parcours}
-            </Accordion>
-          )}
-
+        <div className="mt-8 space-y-4">
           {extraBlocks.map((block) =>
             block.block_type === "accordion" ? (
               <AccordionBlock key={block.id} block={block} />

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlocks";
 import { CmsEditableText, CmsEditableImage, CmsEditPencil, CmsAddTile } from "@/components/cms-edit";
 import AccordionBlock from "@/components/AccordionBlock";
+import PageTabs, { type PageTab } from "@/components/PageTabs";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, getCmsTrainingSessions, type CmsPageBlock } from "@/lib/cms";
 import { sportSlotsTableWithLocation } from "@/lib/training";
@@ -98,17 +99,35 @@ export default async function NatationPage() {
   // à l'avance : affichés à la suite des 3 sections fixes ci-dessus — sans
   // ça, un bloc ajouté manuellement n'apparaît nulle part (ni preview ni site).
   const knownSlots = new Set(Object.keys(DEFAULT_SECTIONS));
-  const extraBlocks = (cmsBlocks ?? []).filter((b) => !b.slot || !knownSlots.has(b.slot));
+  const addedBlocks = (cmsBlocks ?? []).filter((b) => !b.slot || !knownSlots.has(b.slot));
+  // Bloc(s) "Tests chronométriques" ajoutés depuis le dashboard (ancre
+  // "tests" ou titre contenant "test") : rangés dans l'onglet Tests chrono.
+  const isTestBlock = (b: CmsPageBlock) => b.anchor === "tests" || /test/i.test(b.heading);
+  const testBlocks = addedBlocks.filter(isTestBlock);
+  const extraBlocks = addedBlocks.filter((b) => !isTestBlock(b));
 
-  return (
-    <Suspense fallback={null}>
-      <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-        <EnsureCmsBlocks slug="natation" blocks={missingSlots} />
-        <h1 className="section-title font-display text-3xl uppercase text-toac-blue-950">Natation</h1>
-
-        <div className="mt-10 space-y-8">
+  const tabs: PageTab[] = [
+    {
+      id: "creneaux",
+      label: "Créneaux",
+      content: (
+        <div className="space-y-8">
+          <section id="natation-creneaux" className="scroll-mt-24">
+            <h2 className="font-display text-lg uppercase text-toac-blue-950">Créneaux</h2>
+            <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">
+              {creneauxTable ? renderRichText(creneauxTable) : <p>Les créneaux sont affichés dans le planning de la semaine.</p>}
+            </div>
+          </section>
+          <TextSection slot={ORGANISATION_SLOT} block={organisationBlock} />
+        </div>
+      ),
+    },
+    {
+      id: "acces",
+      label: "Accès et inscription",
+      content: (
+        <div className="space-y-8">
           <TextSection slot={ACCES_SLOT} block={accesBlock} />
-
           {accesBlock && (
             <div className="relative max-w-xs">
               <CmsEditPencil
@@ -125,16 +144,54 @@ export default async function NatationPage() {
               />
             </div>
           )}
-
           <TextSection slot={INSCRIPTION_SLOT} block={inscriptionBlock} />
-          {creneauxTable && (
-            <section id="natation-creneaux" className="scroll-mt-24 border-t border-toac-gray-200 pt-8">
-              <h2 className="font-display text-lg uppercase text-toac-blue-950">Créneaux</h2>
-              <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">{renderRichText(creneauxTable)}</div>
-            </section>
+        </div>
+      ),
+    },
+  ];
+  if (testBlocks.length > 0) {
+    tabs.push({
+      id: "tests",
+      label: "Tests chrono",
+      content: (
+        <div className="space-y-4">
+          {testBlocks.map((block) =>
+            block.block_type === "accordion" ? (
+              <AccordionBlock key={block.id} block={block} defaultOpen />
+            ) : (
+              <section key={block.id} id={block.anchor || slugify(block.heading) || block.id} className="scroll-mt-24">
+                <CmsEditableText
+                  as="h2"
+                  value={block.heading}
+                  target={{ kind: "block", id: block.id, field: "heading" }}
+                  className="font-display text-lg uppercase text-toac-blue-950"
+                />
+                <CmsEditableText
+                  as="div"
+                  value={block.body}
+                  target={{ kind: "block", id: block.id, field: "body" }}
+                  multiline
+                  className="mt-3 block space-y-3 whitespace-pre-line text-sm text-toac-blue-900/90"
+                />
+              </section>
+            )
           )}
-          <TextSection slot={ORGANISATION_SLOT} block={organisationBlock} />
+        </div>
+      ),
+    });
+  }
 
+  return (
+    <Suspense fallback={null}>
+      <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+        <EnsureCmsBlocks slug="natation" blocks={missingSlots} />
+        <h1 className="section-title font-display text-3xl uppercase text-toac-blue-950">Natation</h1>
+
+        <div className="mt-10">
+          <PageTabs tabs={tabs} />
+        </div>
+
+        <div className="mt-8 space-y-8">
           {extraBlocks.map((block) =>
             block.block_type === "accordion" ? (
               <AccordionBlock key={block.id} block={block} />
