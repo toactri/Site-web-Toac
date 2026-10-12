@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { CmsPageBlocks } from "@/components/CmsPageBlocks";
@@ -41,7 +42,11 @@ export default function ConfidentialitePage() {
               <h2 className="font-display text-base uppercase text-toac-blue-950">Vos droits</h2>
               <p className="mt-2">
                 Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos
-                données. Pour l'exercer, contactez le bureau à contact@toac-triathlon.com.
+                données. Pour l'exercer, contactez le bureau via le{" "}
+                <Link href="/contact" className="underline">
+                  formulaire de contact
+                </Link>
+                .
               </p>
             </section>
           </div>

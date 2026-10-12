@@ -81,7 +81,6 @@ export default async function RootLayout({
               partenairesSection={partenairesSection}
               partnerHrefFor={partnerHrefFor}
               socialLinks={cmsSettings?.social_links}
-              email={cmsSettings?.email}
             />
           </Suspense>
           </CmsVariablesProvider>

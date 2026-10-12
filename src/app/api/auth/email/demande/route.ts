@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     });
     if (outcome.kind === "echec") {
       return NextResponse.json(
-        { error: `L'email de connexion n'a pas pu être envoyé. Réessayez plus tard ou contactez le bureau : ${CONTACT_BUREAU}.` },
+        { error: `L'email de connexion n'a pas pu être envoyé. Réessayez plus tard ou contactez le bureau via le ${CONTACT_BUREAU}.` },
         { status: 502 }
       );
     }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) {
       return NextResponse.json(
-        { error: `La connexion n'est pas encore ouverte. Contactez le bureau : ${CONTACT_BUREAU}.` },
+        { error: `La connexion n'est pas encore ouverte. Contactez le bureau via le ${CONTACT_BUREAU}.` },
         { status: 503 }
       );
     }

@@ -21,7 +21,7 @@ export const maxDuration = 60;
 /** Pas de nouvel envoi au même adhérent avant ce délai : évite d'inonder sa boîte. */
 const RESEND_DELAY_MS = 10 * 60 * 1000;
 
-const CONTACT = "contact@toac-triathlon.com";
+const CONTACT = "le formulaire de contact du site (toac-triathlon.com/contact)";
 
 export async function POST(request: NextRequest) {
   const form = await request.formData();
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const saison = await getLatestSaison();
     if (!saison) {
       return NextResponse.json(
-        { error: `Le service n'est pas encore ouvert. Contactez le bureau : ${CONTACT}.` },
+        { error: `Le service n'est pas encore ouvert. Contactez le bureau via ${CONTACT}.` },
         { status: 503 }
       );
     }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         {
           error:
             `Aucune adhésion ${saison} trouvée avec ces nom, prénom et date de naissance. Vérifiez votre ` +
-            `saisie (même orthographe que lors de votre inscription) ou contactez le bureau : ${CONTACT}.`,
+            `saisie (même orthographe que lors de votre inscription) ou contactez le bureau via ${CONTACT}.`,
         },
         { status: 404 }
       );
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
     if (!adherent.email) {
       return NextResponse.json(
-        { error: `Aucune adresse email n'est associée à votre dossier. Contactez le bureau : ${CONTACT}.` },
+        { error: `Aucune adresse email n'est associée à votre dossier. Contactez le bureau via ${CONTACT}.` },
         { status: 409 }
       );
     }
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         {
           error:
             `Votre attestation a bien été générée mais l'email n'a pas pu partir. Le bureau en est informé ; ` +
-            `vous pouvez aussi le contacter : ${CONTACT}.`,
+            `vous pouvez aussi le contacter via ${CONTACT}.`,
         },
         { status: 502 }
       );
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     ) {
       console.error("[attestation]", error.message);
       return NextResponse.json(
-        { error: `Le service n'est pas encore ouvert. Contactez le bureau : ${CONTACT}.` },
+        { error: `Le service n'est pas encore ouvert. Contactez le bureau via ${CONTACT}.` },
         { status: 503 }
       );
     }

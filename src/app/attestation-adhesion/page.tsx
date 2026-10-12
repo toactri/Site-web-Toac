@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import AttestationRequestForm from "@/components/AttestationRequestForm";
 import { createFormToken, FORM_TOKEN_FIELD, HONEYPOT_FIELD } from "@/lib/formGuard";
 
@@ -37,8 +38,8 @@ export default function AttestationAdhesionPage() {
         />
       </div>
       <p className="mt-6 text-sm text-toac-blue-900/60">
-        Adresse email changée depuis l&apos;inscription, ou dossier introuvable ? Écrivez au bureau :{" "}
-        <a href="mailto:contact@toac-triathlon.com" className="underline">contact@toac-triathlon.com</a>.
+        Adresse email changée depuis l&apos;inscription, ou dossier introuvable ? Écrivez au bureau via le{" "}
+        <Link href="/contact" className="underline">formulaire de contact</Link>.
       </p>
     </div>
   );

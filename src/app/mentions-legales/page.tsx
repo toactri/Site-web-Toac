@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { CmsPageBlocks } from "@/components/CmsPageBlocks";
@@ -27,7 +28,10 @@ export default function MentionsLegalesPage() {
                 <br />
                 Siège social : 20 chemin de Garric, 31200 Toulouse.
                 <br />
-                Contact : contact@toac-triathlon.com
+                Contact :{" "}
+                <Link href="/contact" className="underline">
+                  formulaire de contact
+                </Link>
               </p>
             </section>
             <section>

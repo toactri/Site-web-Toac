@@ -30,6 +30,8 @@ function formatPrice(price: number): string {
   }).format(price);
 }
 
+const CONTACT_FORM_LINK = "[formulaire de contact](/contact)";
+
 export function buildCmsVariables(
   settings: CmsSiteSettings | null,
   catalog: CmsCatalogSection[] | null
@@ -47,11 +49,13 @@ export function buildCmsVariables(
     [["nom"], settings?.business_name],
     [["adresse"], settings?.address],
     [["téléphone", "telephone"], settings?.phone],
-    [["email", "e-mail"], settings?.email],
   ];
   for (const [keys, value] of fromSettings) {
     if (value?.trim()) for (const k of keys) vars[k] = value.trim();
   }
+  // Aucune adresse email publiée sur le site : {{email}} renvoie toujours
+  // vers le formulaire de contact, quel que soit le champ saisi dans le CMS.
+  for (const k of ["email", "e-mail"]) vars[k] = CONTACT_FORM_LINK;
   return vars;
 }
 

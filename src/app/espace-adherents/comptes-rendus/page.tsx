@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getAdhesionByEmail } from "@/lib/db";
@@ -63,11 +64,11 @@ export default async function ComptesRendusPage() {
           <CompteRenduUploadForm prenomParDefaut={prenom} />
         ) : (
           <p className="mt-2 text-sm text-toac-blue-900/80">
-            Envoyez-le en PDF au bureau,{" "}
-            <a href="mailto:contact@toac-triathlon.com" className="underline">
-              contact@toac-triathlon.com
-            </a>
-            , nommé « année-course-prénom » (ex. : 26-IM-Tours-Rémi.pdf).
+            Contactez le bureau via le{" "}
+            <Link href="/contact" className="underline">
+              formulaire de contact
+            </Link>{" "}
+            pour le partager (PDF nommé « année-course-prénom », ex. : 26-IM-Tours-Rémi.pdf).
           </p>
         )}
       </section>

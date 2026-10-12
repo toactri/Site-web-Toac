@@ -34,7 +34,7 @@ const MAX_DEMANDES = 3;
 /** Essais de code autorisés par demande. */
 export const MAX_TENTATIVES_CODE = 5;
 
-export const CONTACT_BUREAU = "contact@toac-triathlon.com";
+export const CONTACT_BUREAU = "formulaire de contact du site (toac-triathlon.com/contact)";
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();

@@ -21,7 +21,6 @@ export default function Footer({
   partenairesSection,
   partnerHrefFor,
   socialLinks,
-  email,
 }: {
   footerBlocks?: CmsPageBlock[] | null;
   footerItems?: NavLink[] | null;
@@ -29,12 +28,7 @@ export default function Footer({
   /** Lien vers la page du partenaire sur le site, si elle existe (sinon lien externe). */
   partnerHrefFor?: (name: string) => string | undefined;
   socialLinks?: CmsSiteSettings["social_links"];
-  email?: string;
 }) {
-  // email === undefined : CMS injoignable, on garde l'adresse par défaut.
-  // email === "" : l'admin a volontairement vidé le champ dans Informations
-  // pour ne plus afficher d'adresse dans le pied de page.
-  const contactEmail = email === undefined ? "contact@toac-triathlon.com" : email;
   const sitemapLinks = footerItems && footerItems.length ? footerItems : FOOTER_SITEMAP;
   const infoBlock = footerBlocks?.[0];
   // Blocs supplémentaires ajoutés depuis le dashboard ("+ Ajouter un bloc") :
@@ -100,14 +94,12 @@ export default function Footer({
             </Link>
           </h3>
           <ul className="space-y-2 text-sm text-white/80">
-            {contactEmail && (
-              <li className="flex items-center gap-2">
-                <a href={`mailto:${contactEmail}`} className="hover:text-white">
-                  {contactEmail}
-                </a>
-                <CmsEditPencil payload={{ type: "edit-info-field", field: "email" }} />
-              </li>
-            )}
+            {/* Aucune adresse email affichée : tous les contacts passent par le formulaire. */}
+            <li>
+              <Link href="/contact" className="hover:text-white">
+                Formulaire de contact
+              </Link>
+            </li>
             <li className="flex items-center gap-2">
               <a
                 href={socialLinks?.instagram || "https://www.instagram.com/triathlonsdulauragais"}

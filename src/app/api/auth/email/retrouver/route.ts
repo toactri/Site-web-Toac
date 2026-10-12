@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
         {
           error:
             `Aucune adhésion${saison ? ` ${saison}` : ""} ne correspond à ces nom, prénom et date de naissance. ` +
-            `Vérifiez l'orthographe (la même que lors de votre inscription) ou contactez le bureau : ${CONTACT_BUREAU}.`,
+            `Vérifiez l'orthographe (la même que lors de votre inscription) ou contactez le bureau via le ${CONTACT_BUREAU}.`,
         },
         { status: 404 }
       );
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const identity = identityFromAdherentRow(adherent);
     if (!identity) {
       return NextResponse.json(
-        { error: `Aucune adresse email n'est associée à votre adhésion. Contactez le bureau : ${CONTACT_BUREAU}.` },
+        { error: `Aucune adresse email n'est associée à votre adhésion. Contactez le bureau via le ${CONTACT_BUREAU}.` },
         { status: 409 }
       );
     }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     });
     if (outcome.kind === "echec") {
       return NextResponse.json(
-        { error: `L'email de connexion n'a pas pu être envoyé. Réessayez plus tard ou contactez le bureau : ${CONTACT_BUREAU}.` },
+        { error: `L'email de connexion n'a pas pu être envoyé. Réessayez plus tard ou contactez le bureau via le ${CONTACT_BUREAU}.` },
         { status: 502 }
       );
     }
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) {
       return NextResponse.json(
-        { error: `La connexion n'est pas encore ouverte. Contactez le bureau : ${CONTACT_BUREAU}.` },
+        { error: `La connexion n'est pas encore ouverte. Contactez le bureau via le ${CONTACT_BUREAU}.` },
         { status: 503 }
       );
     }

@@ -222,7 +222,7 @@ Les données sont destinées aux membres du Bureau et du Conseil d'Administratio
 Les données sont conservées pendant la durée de l'adhésion, augmentée de la durée nécessaire au respect des obligations légales et comptables de l'association.
 
 **Droits des adhérents**
-Conformément à la réglementation applicable, chaque adhérent dispose d'un droit d'accès, de rectification, d'effacement et de limitation du traitement de ses données, ainsi que d'un droit d'opposition pour motif légitime. Ces droits peuvent être exercés par écrit auprès du Bureau du TOAC Triathlon, à l'adresse [contact@toac-triathlon.com](mailto:contact@toac-triathlon.com).
+Conformément à la réglementation applicable, chaque adhérent dispose d'un droit d'accès, de rectification, d'effacement et de limitation du traitement de ses données, ainsi que d'un droit d'opposition pour motif légitime. Ces droits peuvent être exercés par écrit auprès du Bureau du TOAC Triathlon, via le [formulaire de contact](/contact) du site.
 
 En cas de difficulté, l'adhérent dispose également du droit d'introduire une réclamation auprès de la Commission Nationale de l'Informatique et des Libertés (CNIL).`,
   },

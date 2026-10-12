@@ -132,6 +132,6 @@ export const FAQ_ITEMS: FaqItem[] = [
     categorie: "Vie du club",
     question: "Qui contacter pour une question ?",
     reponse:
-      "Le bureau du club, à contact@toac-triathlon.com, ou via le formulaire de la page Contact.",
+      "Le bureau du club, via le formulaire de la page Contact.",
   },
 ];

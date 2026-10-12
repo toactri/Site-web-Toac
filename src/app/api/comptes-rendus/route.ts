@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const secret = process.env.CR_DRIVE_UPLOAD_SECRET?.trim();
   if (!scriptUrl || !secret) {
     return NextResponse.json(
-      { error: "L'envoi en ligne n'est pas encore configuré. Envoyez votre CR à contact@toac-triathlon.com." },
+      { error: "L'envoi en ligne n'est pas encore configuré. Contactez le bureau via le formulaire de contact du site (toac-triathlon.com/contact)." },
       { status: 503 }
     );
   }

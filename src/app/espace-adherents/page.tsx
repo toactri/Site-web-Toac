@@ -97,10 +97,10 @@ export default async function EspaceAdherentsAccueil() {
       </ul>
 
       <p className="mt-10 text-sm text-toac-blue-900/60">
-        Une question ? Écrivez au bureau :{" "}
-        <a href="mailto:contact@toac-triathlon.com" className="underline">
-          contact@toac-triathlon.com
-        </a>
+        Une question ? Écrivez au bureau via le{" "}
+        <Link href="/contact" className="underline">
+          formulaire de contact
+        </Link>
         .
       </p>
     </div>
