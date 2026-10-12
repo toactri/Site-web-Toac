@@ -27,7 +27,7 @@ const DEFAULT_RECAP = {
     "| Vélo | 07/11 | Lacroix-Falgarde |",
     "| CAP | 15/10 | Piste Capitany (Colomiers) |",
     "| CAP | 31/10 | CA Balma |",
-    "| Vélo / CAP | Mars | À préciser |",
+    "| CAP | Mars | CA Balma |",
     "| Natation | Septembre (tests passés) | Créneaux natation habituels |",
   ].join("\n"),
 };
@@ -41,7 +41,7 @@ const DEFAULT_RECAP = {
  */
 const SPORTS: { label: string; slug: string; href: string | null; slot: string; parcoursSlot?: string }[] = [
   { label: "Vélo", slug: "velo", href: "/velo", slot: "velo-test-chrono", parcoursSlot: "velo-parcours-chrono" },
-  { label: "Course à pied", slug: "course-a-pied", href: null, slot: "course-a-pied-test-chrono" },
+  { label: "Course à pied", slug: "course-a-pied", href: "/course-a-pied", slot: "course-tests-chrono" },
   { label: "Natation", slug: "natation", href: "/natation", slot: "natation-test-chrono" },
 ];
 
@@ -50,7 +50,7 @@ const TEST_CHRONO_HEADING = /tests?\s+chrono/i;
 function findTestBlock(blocks: CmsPageBlock[] | null, slot: string): CmsPageBlock | undefined {
   return (
     blocks?.find((b) => b.slot === slot) ??
-    blocks?.find((b) => (!b.slot || b.slot.endsWith("test-chrono")) && TEST_CHRONO_HEADING.test(b.heading))
+    blocks?.find((b) => (!b.slot || /tests?-chrono$/.test(b.slot)) && TEST_CHRONO_HEADING.test(b.heading))
   );
 }
 
