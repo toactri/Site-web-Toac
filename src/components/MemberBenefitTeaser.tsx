@@ -6,11 +6,19 @@ import { useAuth } from "./AuthProvider";
 const AVANTAGES_HREF = "/espace-adherents/avantages";
 
 /**
- * Accroche des fiches partenaires publiques : signale qu'un avantage existe
- * sans en dévoiler le détail, qui reste dans l'espace adhérents (le texte de
- * l'avantage n'est jamais envoyé au navigateur sur la page publique).
+ * Accroche des fiches partenaires pour les visiteurs non connectés : signale
+ * qu'un avantage existe sans en dévoiler le détail (le texte de l'avantage
+ * n'est jamais envoyé à leur navigateur). Après connexion, retour sur la
+ * fiche, qui affiche alors l'avantage.
  */
-export default function MemberBenefitTeaser({ partnerName }: { partnerName: string }) {
+export default function MemberBenefitTeaser({
+  partnerName,
+  returnTo,
+}: {
+  partnerName: string;
+  /** Page où revenir après connexion : la fiche partenaire, qui affiche alors l'avantage. */
+  returnTo: string;
+}) {
   const { auth, requireAuth } = useAuth();
 
   return (
@@ -26,11 +34,11 @@ export default function MemberBenefitTeaser({ partnerName }: { partnerName: stri
             : "Connectez-vous à l'espace adhérents pour en voir le détail."}
         </p>
         <Link
-          href={auth.loggedIn ? AVANTAGES_HREF : `/connexion?next=${AVANTAGES_HREF}`}
+          href={auth.loggedIn ? AVANTAGES_HREF : `/connexion?next=${returnTo}`}
           onClick={(e) => {
             if (!auth.loggedIn) {
               e.preventDefault();
-              requireAuth(AVANTAGES_HREF);
+              requireAuth(returnTo);
             }
           }}
           className="mt-4 inline-block rounded-md bg-toac-pink-500 px-4 py-2 text-sm font-medium text-white hover:bg-toac-pink-600"

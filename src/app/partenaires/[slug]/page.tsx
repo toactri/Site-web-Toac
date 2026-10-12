@@ -5,7 +5,7 @@ import { slugify } from "@/lib/slug";
 import { getSession } from "@/lib/session";
 import { pageMetadata, privatePageMetadata, toMetaDescription } from "@/lib/seo";
 import { CmsPageBlocks } from "@/components/CmsPageBlocks";
-import { CmsEditableImage } from "@/components/cms-edit";
+import { CmsEditableImage, CmsEditableText } from "@/components/cms-edit";
 import MemberBenefitTeaser from "@/components/MemberBenefitTeaser";
 import AlltricksSignupForm, { AlltricksSignupConfirmation } from "@/components/AlltricksSignupForm";
 
@@ -66,7 +66,9 @@ export default async function PartenairePage({
   const partner = matchingPartners.find((p) => p.image_url) ?? matchingPartners[0];
   // Formulaire Alltricks réservé aux adhérents connectés : il transmet leur
   // email au partenaire (voir aussi le contrôle dans /api/partenaires/inscription).
-  const hasSignupForm = slug === "alltricks" && (await getSession()) !== null;
+  const loggedIn = (await getSession()) !== null;
+  const hasSignupForm = slug === "alltricks" && loggedIn;
+  const memberBenefits = partner?.member_benefits?.trim() ? partner.member_benefits : null;
   const signupSent = hasSignupForm && merci === "1";
 
   return (
@@ -112,10 +114,24 @@ export default async function PartenairePage({
         }
       />
 
-      {/* Avantage adhérents : seule son existence est signalée ici ; le
-          détail (champ de la fiche partenaire, dashboard → Partenaires) est
-          réservé à l'espace adhérents, où il s'édite aussi. */}
-      {partner?.member_benefits?.trim() && <MemberBenefitTeaser partnerName={page.title} />}
+      {/* Avantage adhérents (champ de la fiche partenaire, dashboard →
+          Partenaires) : détail affiché aux seuls adhérents connectés — le texte
+          n'est jamais envoyé aux visiteurs, qui voient une accroche à la place. */}
+      {partner && memberBenefits && loggedIn && (
+        <section className="mx-auto max-w-4xl px-4 pt-12 sm:px-6 lg:px-8">
+          <div className="rounded-lg border border-toac-pink-500/30 border-l-4 border-l-toac-pink-500 bg-toac-pink-300/20 p-5">
+            <h2 className="font-display text-xl uppercase text-toac-blue-950">Avantages adhérents TOAC</h2>
+            <CmsEditableText
+              as="div"
+              value={memberBenefits}
+              target={{ kind: "product", id: partner.id, field: "member_benefits" }}
+              multiline
+              className="mt-3 block space-y-4 whitespace-pre-line text-toac-blue-900/90"
+            />
+          </div>
+        </section>
+      )}
+      {memberBenefits && !loggedIn && <MemberBenefitTeaser partnerName={page.title} returnTo={`/partenaires/${slug}`} />}
 
       {hasSignupForm && !signupSent && (
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">

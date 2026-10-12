@@ -106,7 +106,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
                 await refresh();
                 const next = info.next ?? modalNext;
                 setModalNext(null);
+                // refresh : la page serveur se réaffiche avec la session (ex. fiche
+                // partenaire qui dévoile l'avantage), même si next est la page courante.
                 if (next) router.push(next);
+                router.refresh();
               }}
             />
           </div>
