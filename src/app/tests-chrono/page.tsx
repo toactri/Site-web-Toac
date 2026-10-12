@@ -5,6 +5,8 @@ import Link from "next/link";
 import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlocks";
 import { CmsEditableText, CmsAddTile } from "@/components/cms-edit";
 import AccordionBlock from "@/components/AccordionBlock";
+import MembersOnlyNotice from "@/components/MembersOnlyNotice";
+import { getSession } from "@/lib/session";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, type CmsPageBlock } from "@/lib/cms";
 import { openrunnerEmbedUrl } from "@/lib/openrunner";
@@ -55,7 +57,8 @@ function findTestBlock(blocks: CmsPageBlock[] | null, slot: string): CmsPageBloc
 }
 
 export default async function TestsChronoPage() {
-  const [cmsBlocks, hiddenBlocks, ...sportBlocks] = await Promise.all([
+  const [session, cmsBlocks, hiddenBlocks, ...sportBlocks] = await Promise.all([
+    getSession(),
     getCmsPageBlocks("tests-chrono"),
     getCmsHiddenBlocks("tests-chrono"),
     ...SPORTS.map((s) => getCmsPageBlocks(s.slug)),
@@ -101,7 +104,9 @@ export default async function TestsChronoPage() {
             </section>
           )}
 
-          {SPORTS.map((sport, i) => {
+          {/* Modalités par sport réservées aux adhérents (emails et téléphones des encadrants). */}
+          {!session && <MembersOnlyNotice title="Modalités des tests" returnTo="/tests-chrono" />}
+          {session && SPORTS.map((sport, i) => {
             const blocks = sportBlocks[i];
             const block = findTestBlock(blocks, sport.slot);
             const parcoursBlock = sport.parcoursSlot ? blocks?.find((b) => b.slot === sport.parcoursSlot) : undefined;
