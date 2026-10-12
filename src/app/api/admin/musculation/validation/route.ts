@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
+import { canValidateMusculation } from "@/lib/musculationValidateurs";
 import { setMusculationValidation, deleteMusculationValidation, DatabaseNotConfiguredError } from "@/lib/db";
 
 /**
  * Coche / décoche « validé musculation » pour un adhérent de la saison
  * (`{ adherentId, valide, anneeDecharge? }`), ou retire une validation par son
- * identifiant (`{ validationId }`). Réservé aux comptes `admin`.
+ * identifiant (`{ validationId }`). Réservé aux membres du bureau désignés
+ * (voir musculationValidateurs.ts).
  */
 export async function POST(request: NextRequest) {
   const session = await getSession().catch(() => null);
-  if (session?.role !== "admin") {
+  if (!session || !canValidateMusculation(session)) {
     return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
   }
 
