@@ -26,11 +26,11 @@ const DEFAULT_RECAP = {
   body: [
     "| Sport | Date | Lieu |",
     "| --- | --- | --- |",
-    "| Vélo | 07/11 | Lacroix-Falgarde |",
+    "| Natation | Septembre (tests passés) | JOB / Castex |",
     "| CAP | 15/10 | Piste Capitany (Colomiers) |",
     "| CAP | 31/10 | CA Balma |",
+    "| Vélo | 07/11 | Lacroix-Falgarde |",
     "| CAP | Mars | CA Balma |",
-    "| Natation | Septembre (tests passés) | Créneaux natation habituels |",
   ].join("\n"),
 };
 
