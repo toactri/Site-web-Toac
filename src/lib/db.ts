@@ -280,6 +280,16 @@ function ensureSchema(): Promise<void> {
         CREATE INDEX IF NOT EXISTS connexion_jetons_email
           ON connexion_jetons (email, cree_le);
 
+        -- Fréquentation de l'espace adhérents, pour la vue bureau : une ligne
+        -- par email connecté. Mise à jour à chaque connexion (lien ou code)
+        -- et au plus une fois par heure lors d'une visite de l'espace.
+        CREATE TABLE IF NOT EXISTS acces_espace (
+          email TEXT PRIMARY KEY,
+          premier_acces TIMESTAMPTZ NOT NULL DEFAULT now(),
+          dernier_acces TIMESTAMPTZ NOT NULL DEFAULT now(),
+          connexions INTEGER NOT NULL DEFAULT 0
+        );
+
         -- Migration idempotente des colonnes ajoutées après coup à la table
         -- historique inscriptions (ancien parcours Monetico).
         DO $$
@@ -1047,6 +1057,7 @@ export interface BureauCompteurs {
   partenaires: { valides: number; aTraiter: number };
   musculation: { valides: number; aTraiter: number };
   attestations: { valides: number; aTraiter: number };
+  acces: { valides: number; aTraiter: number };
 }
 
 /**
@@ -1076,12 +1087,15 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
            count(*) FILTER (WHERE envoi_statut = 'envoyee')::int,
            count(*) FILTER (WHERE envoi_statut IS DISTINCT FROM 'envoyee')::int
     FROM attestations
+    UNION ALL
+    SELECT 'acces', count(*)::int, 0 FROM acces_espace
     `
   );
   const compteurs: BureauCompteurs = {
     partenaires: { valides: 0, aTraiter: 0 },
     musculation: { valides: 0, aTraiter: 0 },
     attestations: { valides: 0, aTraiter: 0 },
+    acces: { valides: 0, aTraiter: 0 },
   };
   for (const r of rows) compteurs[r.fonction] = { valides: r.valides, aTraiter: r.a_traiter };
   return compteurs;
@@ -1255,6 +1269,64 @@ export async function getAdhesionByEmail(email: string): Promise<AdherentSaisonR
     bureau.length > 0 ||
     decharges.some((d) => [nameKey(d.prenom, d.nom), nameKey(d.nom, d.prenom)].includes(adherent.name_key));
   return { ...adherent, musculation };
+}
+
+/** Connexion réussie à l'espace adhérents (lien ou code). */
+export async function recordConnexionEspace(email: string): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    `
+    INSERT INTO acces_espace (email, connexions) VALUES ($1, 1)
+    ON CONFLICT (email) DO UPDATE
+      SET dernier_acces = now(), connexions = acces_espace.connexions + 1
+    `,
+    [email]
+  );
+}
+
+/**
+ * Visite de l'espace par un adhérent déjà connecté. Au plus une écriture par
+ * heure et par adhérent : la date de dernier accès n'a pas besoin d'être plus
+ * précise, et la plupart des pages vues ne touchent ainsi pas la base.
+ */
+export async function recordVisiteEspace(email: string): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    `
+    INSERT INTO acces_espace (email) VALUES ($1)
+    ON CONFLICT (email) DO UPDATE SET dernier_acces = now()
+      WHERE acces_espace.dernier_acces < now() - interval '1 hour'
+    `,
+    [email]
+  );
+}
+
+export interface AccesEspaceRow {
+  email: string;
+  nom: string | null;
+  prenom: string | null;
+  premier_acces: string;
+  dernier_acces: string;
+  connexions: number;
+}
+
+/** Fréquentation de l'espace, avec nom et prénom de l'adhésion la plus récente quand l'email y figure. */
+export async function getAccesEspace(): Promise<AccesEspaceRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<AccesEspaceRow>(
+    `
+    SELECT e.email, a.nom, a.prenom, e.premier_acces, e.dernier_acces, e.connexions
+    FROM acces_espace e
+    LEFT JOIN LATERAL (
+      SELECT nom, prenom FROM adherents_saison
+      WHERE lower(btrim(email)) = e.email
+      ORDER BY saison DESC, id
+      LIMIT 1
+    ) a ON true
+    ORDER BY e.dernier_acces DESC
+    `
+  );
+  return rows;
 }
 
 export interface ConnexionJetonRow {

@@ -8,6 +8,7 @@ import {
   consumeConnexionLien,
   recordConnexionCodeAttempt,
   markConnexionJetonUsed,
+  recordConnexionEspace,
   type AdherentSaisonRow,
   type ConnexionJetonRow,
 } from "@/lib/db";
@@ -221,7 +222,11 @@ export interface LoginSession {
   suivant: string | null;
 }
 
-function toSession(row: ConnexionJetonRow): LoginSession {
+/** Session ouverte : la connexion est consignée pour la vue bureau (sans jamais la bloquer). */
+async function toSession(row: ConnexionJetonRow): Promise<LoginSession> {
+  await recordConnexionEspace(row.email).catch((error) =>
+    console.error("[connexion] Échec de l'enregistrement de l'accès :", error)
+  );
   const role: SessionRole = row.role === "admin" ? "admin" : "member";
   return {
     token: createSessionToken({ username: row.email, name: row.nom_affiche, role }),
@@ -235,7 +240,7 @@ function toSession(row: ConnexionJetonRow): LoginSession {
 export async function loginWithLien(lien: string): Promise<LoginSession | null> {
   if (!lien) return null;
   const row = await consumeConnexionLien(hashLien(lien));
-  return row ? toSession(row) : null;
+  return row ? await toSession(row) : null;
 }
 
 /** Connexion par le code à 6 chiffres, rattaché à la demande affichée dans le navigateur. */
@@ -246,7 +251,7 @@ export async function loginWithCode(demande: string, code: string): Promise<Logi
     const expected = Buffer.from(row.code_hash);
     const actual = Buffer.from(hashCode(row.demande, code));
     if (expected.length === actual.length && crypto.timingSafeEqual(expected, actual)) {
-      return (await markConnexionJetonUsed(row.id)) ? toSession(row) : null;
+      return (await markConnexionJetonUsed(row.id)) ? await toSession(row) : null;
     }
   }
   return null;

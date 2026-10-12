@@ -34,6 +34,7 @@ const BUREAU_ITEM: NavItem = {
     { label: "Avantages partenaires", href: "/espace-adherents/bureau/partenaires" },
     { label: "Décharges musculation", href: "/espace-adherents/bureau/musculation" },
     { label: "Attestations de paiement", href: "/espace-adherents/bureau/attestations" },
+    { label: "Accès espace adhérents", href: "/espace-adherents/bureau/acces" },
     { label: "Diagnostic serveur", href: "/espace-adherents/bureau/diagnostic" },
   ],
 };
