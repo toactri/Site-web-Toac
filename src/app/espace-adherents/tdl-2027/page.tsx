@@ -2,14 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { getCmsPageBlocks, type CmsPageBlock } from "@/lib/cms";
+import { renderRichText } from "@/lib/rich-text";
 
 export const metadata: Metadata = {
-  title: "Lancement TDL 2027",
+  title: "Infos Bénévoles TOAC 2027",
   robots: { index: false, follow: false },
 };
 
 // Contenu de la présentation de la réunion de lancement du 12 octobre 2026.
 // Réservé aux adhérents : noms des responsables et infos internes au club.
+//
+// Les tableaux des pôles se modifient dans le dashboard Devanture (Pages →
+// « Infos Bénévoles TOAC 2027 ») : un bloc par famille de pôles, dont le titre
+// est « Famille · sous-titre » et dont chaque ligne du texte décrit un pôle au
+// format « Pôle | Mission | Responsable ». Un bloc sans « | » s'affiche comme
+// un encart d'info en haut de la page. Tant que la page CMS n'existe pas (ou
+// que le CMS ne répond pas), les tableaux par défaut ci-dessous s'appliquent.
+
+const CMS_SLUG = "tdl-2027";
 
 const CHIFFRES_2026 = [
   { valeur: "1 732", label: "inscrits" },
@@ -39,8 +50,9 @@ const CALENDRIER = [
 ];
 
 type Pole = { nom: string; mission: string; responsable: string; aPourvoir?: boolean };
+type Famille = { nom: string; sousTitre?: string; poles: Pole[] };
 
-const FAMILLES: { nom: string; sousTitre: string; poles: Pole[] }[] = [
+const FAMILLES: Famille[] = [
   {
     nom: "Pilotage",
     sousTitre: "Faire tenir l'ensemble",
@@ -169,6 +181,27 @@ const MISSIONS_AMONT = [
   { mission: "Impressions et listings à J-2", quand: "Semaine de l'événement", pole: "Inscriptions, Administration" },
 ];
 
+const A_POURVOIR = /pourvoir|à trouver|a trouver/i;
+
+/** Lignes « Pôle | Mission | Responsable » d'un bloc CMS, ou null s'il n'en contient aucune. */
+function parsePoles(body: string): Pole[] | null {
+  const poles = body
+    .split("\n")
+    .filter((line) => line.includes("|"))
+    .map((line) => {
+      const [nom = "", mission = "", ...reste] = line.split("|").map((part) => part.trim());
+      const responsable = reste.join(" | ");
+      return { nom, mission, responsable, aPourvoir: A_POURVOIR.test(responsable) };
+    })
+    .filter((pole) => pole.nom);
+  return poles.length ? poles : null;
+}
+
+function familleFromBlock(block: CmsPageBlock, poles: Pole[]): Famille {
+  const [nom, ...sousTitre] = block.heading.split("·").map((part) => part.trim());
+  return { nom: nom || "Pôles", sousTitre: sousTitre.join(" · ") || undefined, poles };
+}
+
 function SectionTitle({ children, sousTitre }: { children: React.ReactNode; sousTitre?: string }) {
   return (
     <div className="mt-14">
@@ -199,6 +232,18 @@ export default async function Tdl2027Page() {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/tdl-2027");
 
+  const blocks = await getCmsPageBlocks(CMS_SLUG);
+  const familles: Famille[] = [];
+  const infos: CmsPageBlock[] = [];
+  for (const block of blocks ?? []) {
+    const poles = parsePoles(block.body);
+    if (poles) familles.push(familleFromBlock(block, poles));
+    else if (block.heading || block.body) infos.push(block);
+  }
+  // Page CMS absente ou sans aucun tableau : on garde les pôles par défaut.
+  const famillesAffichees = familles.length ? familles : FAMILLES;
+  const nbPoles = famillesAffichees.reduce((total, f) => total + f.poles.length, 0);
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
       <Link href="/espace-adherents/documents" className="text-sm text-toac-blue-700 underline">
@@ -214,6 +259,17 @@ export default async function Tdl2027Page() {
         <h1 className="mt-4 font-display text-4xl uppercase leading-tight sm:text-5xl">Triathlons du Lauragais 2027</h1>
         <p className="mt-3 text-white/80">16e édition · 5 et 6 juin 2027 · lac de la Thésauque, Nailloux</p>
       </div>
+
+      {infos.map((info) => (
+        <div
+          key={info.id}
+          id={info.anchor ?? undefined}
+          className="mt-6 rounded-md border border-toac-gray-200 border-l-4 border-l-toac-pink-500 bg-white p-4 text-sm text-toac-blue-900/90 shadow-sm"
+        >
+          {info.heading && <h2 className="font-semibold text-toac-blue-950">{info.heading}</h2>}
+          {info.body && <div className="mt-1">{renderRichText(info.body)}</div>}
+        </div>
+      ))}
 
       {/* Bilan 2026 */}
       <SectionTitle sousTitre="Un record, grâce à vous">Édition 2026</SectionTitle>
@@ -317,11 +373,14 @@ export default async function Tdl2027Page() {
       </p>
 
       {/* Pôles */}
-      <SectionTitle sousTitre="Trois familles">14 pôles</SectionTitle>
-      {FAMILLES.map((f) => (
+      <SectionTitle sousTitre={famillesAffichees.length > 1 ? `${famillesAffichees.length} familles` : undefined}>
+        {`${nbPoles} pôles`}
+      </SectionTitle>
+      {famillesAffichees.map((f) => (
         <div key={f.nom} className="mt-6">
           <h3 className="font-display text-lg uppercase text-toac-blue-950">
-            {f.nom} <span className="text-sm normal-case text-toac-blue-900/60">· {f.sousTitre}</span>
+            {f.nom}
+            {f.sousTitre && <span className="text-sm normal-case text-toac-blue-900/60"> · {f.sousTitre}</span>}
           </h3>
           <div className="mt-2 overflow-x-auto rounded-md border border-toac-gray-200 bg-white shadow-sm">
             <table className="w-full text-left text-sm">
@@ -333,8 +392,8 @@ export default async function Tdl2027Page() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-toac-gray-200 text-toac-blue-900/90">
-                {f.poles.map((p) => (
-                  <tr key={p.nom}>
+                {f.poles.map((p, i) => (
+                  <tr key={`${p.nom}-${i}`}>
                     <td className="px-3 py-2 font-semibold text-toac-blue-950">{p.nom}</td>
                     <td className="px-3 py-2">{p.mission}</td>
                     <td className={`px-3 py-2 ${p.aPourvoir ? "font-semibold text-toac-pink-600" : ""}`}>
