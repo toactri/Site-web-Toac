@@ -24,6 +24,7 @@ export const RUBRIQUES: RubriqueCompteRendu[] = [
   { titre: "Duathlons", detail: "", id: "1MqEt2dnKQ6ZwJnztfhkH-xD-EXrJqxVY", prefixe: "Duathlon" },
   { titre: "Marathons", detail: "Paris, Séville…", id: "1bnt9uZ7W8h6bcBS087AAp-DI4Zqu7Q8B", prefixe: "Marathon" },
   { titre: "Trails", detail: "", id: "1KliKRNCH3jAOmKxjeXePxP3OKg7g2Mx7", prefixe: "Trail" },
+  { titre: "Swimrun", detail: "", id: "1hWlvojCx7sB_BCQ4iEJFKihIdg0_LOOw", prefixe: "Swimrun" },
   { titre: "Autres", detail: "XTri, paratriathlon, gazettes…", id: "1UxNcSsO9Kk3qic5lZ6-lCdr-rXMJDqMc", prefixe: "" },
 ];
 
