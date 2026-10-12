@@ -5,6 +5,7 @@ import { insertPartnerSignup, DatabaseNotConfiguredError } from "@/lib/db";
 import { buildErrorHtml } from "@/lib/errorHtml";
 import { notifyStaffAndRecord } from "@/lib/partnerSignupNotify";
 import { checkFormSubmission } from "@/lib/formGuard";
+import { getSession } from "@/lib/session";
 
 /**
  * Demande d'activation des avantages d'un partenaire (ex. Alltricks) : un
@@ -28,6 +29,10 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Réservé aux adhérents connectés : le formulaire n'est affiché qu'à eux.
+  if (!(await getSession())) {
+    return htmlError("Ce formulaire est réservé aux adhérents : connectez-vous à l'espace adhérents puis renvoyez votre demande.");
+  }
   if (!partenaire || !nom || !prenom || !email) {
     return htmlError("Merci de renseigner votre nom, prénom et email.");
   }

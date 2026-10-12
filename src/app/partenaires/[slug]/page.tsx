@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCmsPages, getCmsCatalog } from "@/lib/cms";
 import { slugify } from "@/lib/slug";
+import { getSession } from "@/lib/session";
 import { pageMetadata, privatePageMetadata, toMetaDescription } from "@/lib/seo";
 import { CmsPageBlocks } from "@/components/CmsPageBlocks";
 import { CmsEditableImage } from "@/components/cms-edit";
@@ -63,7 +64,9 @@ export default async function PartenairePage({
   // privilégie toujours celle qui a un logo, peu importe l'ordre.
   const matchingPartners = cmsCatalog?.flatMap((section) => section.products).filter((p) => slugify(p.name) === slug) ?? [];
   const partner = matchingPartners.find((p) => p.image_url) ?? matchingPartners[0];
-  const hasSignupForm = slug === "alltricks";
+  // Formulaire Alltricks réservé aux adhérents connectés : il transmet leur
+  // email au partenaire (voir aussi le contrôle dans /api/partenaires/inscription).
+  const hasSignupForm = slug === "alltricks" && (await getSession()) !== null;
   const signupSent = hasSignupForm && merci === "1";
 
   return (
