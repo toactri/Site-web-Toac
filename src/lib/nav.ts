@@ -31,6 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Natation", href: "/natation" },
       { label: "Vélo", href: "/velo" },
       { label: "Course à pied", href: "/course-a-pied" },
+      { label: "Tests chrono", href: "/tests-chrono" },
     ],
   },
   {
