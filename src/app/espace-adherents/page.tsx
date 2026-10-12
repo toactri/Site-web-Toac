@@ -49,6 +49,11 @@ export default async function EspaceAdherentsAccueil() {
       texte: "Les récits de course des Toacistes : Ironman, Embrunman, marathons, trails…",
     },
     {
+      href: "/espace-adherents/nutrition",
+      titre: "Conseils nutrition",
+      texte: "Documents du club et recettes maison pour nourrir l'effort : boisson, gels, récup.",
+    },
+    {
       href: "/attestation-adhesion",
       titre: "Attestation de paiement",
       texte: "Recevez par email l'attestation de votre adhésion, pour votre CSE.",
