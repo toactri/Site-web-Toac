@@ -4,10 +4,13 @@ import { Suspense } from "react";
 import Link from "next/link";
 import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlocks";
 import { CmsEditableText, CmsAddTile } from "@/components/cms-edit";
+import Accordion from "@/components/Accordion";
 import AccordionBlock from "@/components/AccordionBlock";
+import MemberOnlyTeaser from "@/components/MemberOnlyTeaser";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, type CmsPageBlock } from "@/lib/cms";
 import { openrunnerEmbedUrl } from "@/lib/openrunner";
+import { getSession } from "@/lib/session";
 import { slugify } from "@/lib/slug";
 
 export const metadata: Metadata = pageMetadata({
@@ -38,11 +41,14 @@ const DEFAULT_RECAP = {
  * modifier le bloc sur /velo (ou /natation…) met cette page à jour aussitôt.
  * Bloc repéré par son emplacement fixe (`slot`) ou, à défaut, par un titre
  * contenant « test(s) chrono » (ex. bloc ajouté à la main sur /natation).
+ * Ces sections sont réservées aux adhérents connectés ; le récapitulatif
+ * (dates, lieux) reste public.
  */
 const SPORTS: { label: string; slug: string; href: string | null; slot: string; parcoursSlot?: string }[] = [
-  { label: "Vélo", slug: "velo", href: "/velo", slot: "velo-test-chrono", parcoursSlot: "velo-parcours-chrono" },
-  { label: "Course à pied", slug: "course-a-pied", href: "/course-a-pied", slot: "course-tests-chrono" },
+  // Même ordre que le récapitulatif (chronologique).
   { label: "Natation", slug: "natation", href: "/natation", slot: "natation-test-chrono" },
+  { label: "Course à pied", slug: "course-a-pied", href: "/course-a-pied", slot: "course-tests-chrono" },
+  { label: "Vélo", slug: "velo", href: "/velo", slot: "velo-test-chrono", parcoursSlot: "velo-parcours-chrono" },
 ];
 
 const TEST_CHRONO_HEADING = /tests?\s+chrono/i;
@@ -55,11 +61,13 @@ function findTestBlock(blocks: CmsPageBlock[] | null, slot: string): CmsPageBloc
 }
 
 export default async function TestsChronoPage() {
-  const [cmsBlocks, hiddenBlocks, ...sportBlocks] = await Promise.all([
+  const [session, cmsBlocks, hiddenBlocks, ...sportBlocks] = await Promise.all([
+    getSession(),
     getCmsPageBlocks("tests-chrono"),
     getCmsHiddenBlocks("tests-chrono"),
     ...SPORTS.map((s) => getCmsPageBlocks(s.slug)),
   ]);
+  const loggedIn = session !== null;
 
   const hiddenSlots = new Set(hiddenBlocks.map((b) => b.slot).filter(Boolean));
   const recapBlock = (cmsBlocks ?? []).find((b) => b.slot === RECAP_SLOT);
@@ -101,51 +109,59 @@ export default async function TestsChronoPage() {
             </section>
           )}
 
-          {SPORTS.map((sport, i) => {
-            const blocks = sportBlocks[i];
-            const block = findTestBlock(blocks, sport.slot);
-            const parcoursBlock = sport.parcoursSlot ? blocks?.find((b) => b.slot === sport.parcoursSlot) : undefined;
-            const parcoursUrl = parcoursBlock ? openrunnerEmbedUrl(parcoursBlock.body) : null;
+          {loggedIn ? (
+            <div className="space-y-4">
+              {SPORTS.map((sport, i) => {
+                const blocks = sportBlocks[i] as CmsPageBlock[] | null;
+                const block = findTestBlock(blocks, sport.slot);
+                const parcoursBlock = sport.parcoursSlot ? blocks?.find((b) => b.slot === sport.parcoursSlot) : undefined;
+                const parcoursUrl = parcoursBlock ? openrunnerEmbedUrl(parcoursBlock.body) : null;
 
-            return (
-              <section
-                key={sport.slug}
-                id={`test-${sport.slug}`}
-                className="scroll-mt-24 border-t border-toac-gray-200 pt-8"
-              >
-                <h2 className="font-display text-lg uppercase text-toac-blue-950">{sport.label}</h2>
-                {block ? (
-                  <>
-                    {!TEST_CHRONO_HEADING.test(block.heading) && (
-                      <h3 className="mt-2 font-semibold text-toac-blue-950">{block.heading}</h3>
+                return (
+                  <Accordion
+                    key={sport.slug}
+                    anchor={`test-${sport.slug}`}
+                    title={<h2 className="font-display text-lg uppercase text-toac-blue-950">{sport.label}</h2>}
+                  >
+                    {block ? (
+                      <>
+                        {!TEST_CHRONO_HEADING.test(block.heading) && (
+                          <h3 className="font-semibold text-toac-blue-950">{block.heading}</h3>
+                        )}
+                        <div className="space-y-3 text-sm text-toac-blue-900/90">{renderRichText(block.body)}</div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-toac-blue-900/70">Modalités à venir.</p>
                     )}
-                    <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">{renderRichText(block.body)}</div>
-                  </>
-                ) : (
-                  <p className="mt-3 text-sm text-toac-blue-900/70">Modalités à venir.</p>
-                )}
-                {parcoursUrl && (
-                  <iframe
-                    title={parcoursBlock?.heading ?? "Parcours chronométré"}
-                    src={parcoursUrl}
-                    width="100%"
-                    height="500"
-                    loading="lazy"
-                    className="mt-4 w-full rounded-lg border-0"
-                  />
-                )}
-                {sport.href && (
-                  <p className="mt-3 text-xs text-toac-blue-900/70">
-                    Plus d&apos;infos sur la page{" "}
-                    <Link href={sport.href} className="underline hover:text-toac-pink-500">
-                      {sport.label}
-                    </Link>
-                    .
-                  </p>
-                )}
-              </section>
-            );
-          })}
+                    {parcoursUrl && (
+                      <iframe
+                        title={parcoursBlock?.heading ?? "Parcours chronométré"}
+                        src={parcoursUrl}
+                        width="100%"
+                        height="500"
+                        loading="lazy"
+                        className="mt-4 w-full rounded-lg border-0"
+                      />
+                    )}
+                    {sport.href && (
+                      <p className="mt-3 text-xs text-toac-blue-900/70">
+                        Plus d&apos;infos sur la page{" "}
+                        <Link href={sport.href} className="underline hover:text-toac-pink-500">
+                          {sport.label}
+                        </Link>
+                        .
+                      </p>
+                    )}
+                  </Accordion>
+                );
+              })}
+            </div>
+          ) : (
+            <MemberOnlyTeaser
+              text="Les modalités détaillées de chaque test (horaires, parcours, inscriptions) sont accessibles aux adhérents connectés."
+              returnTo="/tests-chrono"
+            />
+          )}
 
           {extraBlocks.map((block) =>
             block.block_type === "accordion" ? (
