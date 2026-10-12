@@ -6,6 +6,22 @@ import { NAV_ITEMS, type NavItem, type NavLink } from "@/lib/nav";
 import { useAuth } from "./AuthProvider";
 import SiteLogo from "./SiteLogo";
 
+// Menu "Mon espace" : les rubriques de l'espace adhérent, affiché une fois
+// connecté (mêmes destinations que les raccourcis de /espace-adherents).
+const MEMBER_ITEM: NavItem = {
+  label: "Mon espace",
+  href: "/espace-adherents",
+  children: [
+    { label: "Accueil de mon espace", href: "/espace-adherents" },
+    { label: "Avantages partenaires", href: "/espace-adherents/avantages" },
+    { label: "Documents & infos internes", href: "/espace-adherents/documents" },
+    { label: "Comptes rendus de course", href: "/espace-adherents/comptes-rendus" },
+    { label: "Conseils nutrition", href: "/espace-adherents/nutrition" },
+    { label: "Attestation de paiement", href: "/attestation-adhesion" },
+    { label: "Salle de musculation", href: "/musculation" },
+  ],
+};
+
 const BUREAU_ITEM: NavItem = {
   label: "Bureau",
   children: [
@@ -25,10 +41,11 @@ export default function Navbar({ items }: { items?: NavItem[] | null }) {
 
   const navItems = useMemo(() => {
     const base = items && items.length ? items : NAV_ITEMS;
+    if (!auth.loggedIn) return base;
     // Menu "Bureau" : uniquement une fois connecté avec un compte admin — sans
     // ça il fallait deviner l'URL de chaque page bureau pour y accéder.
-    return auth.role === "admin" ? [...base, BUREAU_ITEM] : base;
-  }, [items, auth.role]);
+    return auth.role === "admin" ? [...base, MEMBER_ITEM, BUREAU_ITEM] : [...base, MEMBER_ITEM];
+  }, [items, auth.loggedIn, auth.role]);
 
   function handleLinkClick(
     event: React.MouseEvent<HTMLAnchorElement>,
@@ -122,10 +139,7 @@ export default function Navbar({ items }: { items?: NavItem[] | null }) {
         </div>
 
         {auth.loggedIn && (
-          <div className="hidden shrink-0 items-center gap-3 whitespace-nowrap text-sm xl:flex">
-            <Link href="/espace-adherents" className="font-medium text-toac-blue-950 hover:text-toac-blue-600">
-              Mon espace
-            </Link>
+          <div className="hidden shrink-0 items-center whitespace-nowrap text-sm xl:flex">
             <button
               type="button"
               onClick={() => logout()}
@@ -181,14 +195,7 @@ export default function Navbar({ items }: { items?: NavItem[] | null }) {
               </div>
             ))}
             {auth.loggedIn && (
-              <div className="space-y-2 pt-3">
-                <Link
-                  href="/espace-adherents"
-                  onClick={() => setMobileOpen(false)}
-                  className="block w-full rounded-md bg-toac-pink-500 px-4 py-2 text-center text-sm font-medium text-white"
-                >
-                  Mon espace
-                </Link>
+              <div className="pt-3">
                 <button
                   type="button"
                   onClick={() => logout()}
