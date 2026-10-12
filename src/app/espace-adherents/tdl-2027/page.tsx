@@ -102,7 +102,7 @@ const FAMILLES: { nom: string; sousTitre: string; poles: Pole[] }[] = [
       {
         nom: "Catering",
         mission: "Buvette, repas bénévoles, food-trucks, ravitaillements",
-        responsable: "Lionel Kervadec, Cyrille Blanchardon",
+        responsable: "Lionel Kervadec, Cyrille Blanchardon, Alain Bertrand",
       },
       { nom: "Photo", mission: "Couverture photo des épreuves", responsable: "Gauthier Le Chenadec" },
     ],
