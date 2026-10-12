@@ -50,6 +50,7 @@ export const FOOTER_SITEMAP: NavLink[] = [
   { label: "Accueil", href: "/" },
   { label: "Le Club", href: "/le-club" },
   { label: "Entraînements", href: "/entrainements" },
+  { label: "Tests chrono", href: "/tests-chrono" },
   { label: "Triathlons du Lauragais", href: "/triathlons-du-lauragais" },
   { label: "FAQ", href: "/faq" },
   { label: "Nous rejoindre", href: "/adhesion" },

@@ -45,10 +45,10 @@ const DEFAULT_RECAP = {
  * (dates, lieux) reste public.
  */
 const SPORTS: { label: string; slug: string; href: string | null; slot: string; parcoursSlot?: string }[] = [
-  // Même ordre que le récapitulatif (chronologique).
-  { label: "Natation", slug: "natation", href: "/natation", slot: "natation-test-chrono" },
+  // Tests à venir d'abord (chronologique), natation (tests passés) en dernier.
   { label: "Course à pied", slug: "course-a-pied", href: "/course-a-pied", slot: "course-tests-chrono" },
   { label: "Vélo", slug: "velo", href: "/velo", slot: "velo-test-chrono", parcoursSlot: "velo-parcours-chrono" },
+  { label: "Natation", slug: "natation", href: "/natation", slot: "natation-test-chrono" },
 ];
 
 const TEST_CHRONO_HEADING = /tests?\s+chrono/i;
