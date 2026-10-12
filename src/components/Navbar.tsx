@@ -22,6 +22,10 @@ const MEMBER_ITEM: NavItem = {
   ],
 };
 
+// Bouton "Espace adhérents" des visiteurs non connectés : ouvre la fenêtre de
+// connexion, puis mène à l'accueil de l'espace.
+const MEMBER_LOGIN_LINK: NavLink = { label: "Espace adhérents", href: "/espace-adherents", protected: true };
+
 const BUREAU_ITEM: NavItem = {
   label: "Bureau",
   children: [
@@ -138,6 +142,16 @@ export default function Navbar({ items }: { items?: NavItem[] | null }) {
           ))}
         </div>
 
+        {!auth.loggedIn && (
+          <Link
+            href="/connexion?next=/espace-adherents"
+            onClick={(e) => handleLinkClick(e, MEMBER_LOGIN_LINK)}
+            className="hidden shrink-0 whitespace-nowrap rounded-md bg-toac-pink-500 px-4 py-2 text-sm font-medium text-white hover:bg-toac-pink-600 xl:block"
+          >
+            Espace adhérents
+          </Link>
+        )}
+
         {auth.loggedIn && (
           <div className="hidden shrink-0 items-center whitespace-nowrap text-sm xl:flex">
             <button
@@ -194,6 +208,17 @@ export default function Navbar({ items }: { items?: NavItem[] | null }) {
                 )}
               </div>
             ))}
+            {!auth.loggedIn && (
+              <div className="pt-3">
+                <Link
+                  href="/connexion?next=/espace-adherents"
+                  onClick={(e) => handleLinkClick(e, MEMBER_LOGIN_LINK)}
+                  className="block w-full rounded-md bg-toac-pink-500 px-4 py-2 text-center text-sm font-medium text-white"
+                >
+                  Espace adhérents
+                </Link>
+              </div>
+            )}
             {auth.loggedIn && (
               <div className="pt-3">
                 <button
