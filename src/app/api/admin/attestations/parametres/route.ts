@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 import { setParametre, DatabaseNotConfiguredError } from "@/lib/db";
 import { putBlob, deleteBlobs, BlobNotConfiguredError } from "@/lib/blob";
 import { getAttestationSettings, PARAM_SIGNATURE_PATH, PARAM_TRESORIER_NOM } from "@/lib/attestation";
@@ -8,15 +9,16 @@ import { getAttestationSettings, PARAM_SIGNATURE_PATH, PARAM_TRESORIER_NOM } fro
 /**
  * Réglages de l'attestation : nom du trésorier signataire et image de sa
  * signature. L'image est rangée dans le store Blob privé, jamais dans le dépôt
- * git (public). Réservé aux comptes `admin`.
+ * git (public). Réservé aux super-administrateurs (SUPER_ADMIN_EMAILS, voir
+ * src/lib/superAdmin.ts).
  */
 const SIGNATURE_TYPES = new Set(["image/png", "image/jpeg", "image/jpg"]);
 const MAX_SIGNATURE_BYTES = 2 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const session = await getSession().catch(() => null);
-  if (session?.role !== "admin") {
-    return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
+  if (!isSuperAdmin(session)) {
+    return NextResponse.json({ error: "Accès réservé au super-administrateur." }, { status: 403 });
   }
 
   const form = await request.formData();

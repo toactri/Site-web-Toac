@@ -12,6 +12,7 @@ import {
   type ConnexionJetonRow,
 } from "@/lib/db";
 import { createSessionToken, type SessionRole } from "@/lib/session";
+import { superAdminEmails } from "@/lib/superAdmin";
 
 /**
  * Connexion à l'espace adhérents par email, sans mot de passe.
@@ -45,12 +46,14 @@ export function isPlausibleEmail(email: string): boolean {
 }
 
 function adminEmails(): Set<string> {
-  return new Set(
-    (process.env.ADMIN_EMAILS ?? "")
+  return new Set([
+    ...(process.env.ADMIN_EMAILS ?? "")
       .split(",")
       .map(normalizeEmail)
-      .filter(Boolean)
-  );
+      .filter(Boolean),
+    // Les super-administrateurs sont aussi membres du bureau (src/lib/superAdmin.ts).
+    ...superAdminEmails(),
+  ]);
 }
 
 /** N'accepte qu'un chemin interne au site comme destination après connexion. */

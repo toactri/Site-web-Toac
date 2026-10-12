@@ -72,6 +72,12 @@ Les adresses listées dans `ADMIN_EMAILS` (séparées par des virgules) se conne
 rôle bureau. Le compte `ADMIN_USERNAME` / `ADMIN_PASSWORD` reste disponible en secours (lien « Accès bureau
 par identifiant » de la page de connexion).
 
+Les adresses de `SUPER_ADMIN_EMAILS` ont en plus accès aux deux réglages sensibles de **Bureau → Attestations
+de paiement** : l'import de la liste des adhérents et le trésorier signataire avec sa signature. Les autres
+membres du bureau voient la page sans ces deux blocs, et les routes correspondantes (ainsi que l'image de
+signature) leur répondent « accès refusé ». Une adresse super-administrateur a aussi le rôle bureau, même
+absente de `ADMIN_EMAILS` ; le compte `ADMIN_USERNAME` n'est jamais super-administrateur.
+
 ### Comptes locaux (développement)
 
 `npm run accounts -- list|add|passwd|remove` gère `src/data/accounts.json` (ignoré par git, absent en
@@ -246,7 +252,7 @@ Montants repris de l'onglet « Dossiers adhésion » du Google Sheets : **cotisa
 
 ### Mise en route (une fois par saison)
 
-Tout se fait depuis **Bureau → Attestations de paiement** ; le service reste fermé tant que les deux étapes
+Tout se fait depuis **Bureau → Attestations de paiement**, connecté avec une adresse de `SUPER_ADMIN_EMAILS` (§ 4) ; le service reste fermé tant que les deux étapes
 ne sont pas faites.
 
 1. **Signataire** : nom du trésorier + image de sa signature (PNG/JPG). L'image est rangée dans le store Blob

@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 import { replaceAdherentsSaison, DatabaseNotConfiguredError } from "@/lib/db";
 import { parseDossiersAdhesionCsv, normalizeSaison, ImportFormatError } from "@/lib/adherentsImport";
 
 /**
  * Import de l'onglet « Dossiers adhésion » (CSV) dans la base : remplace tous
- * les adhérents de la saison indiquée. Réservé aux comptes `admin`.
+ * les adhérents de la saison indiquée. Réservé aux super-administrateurs
+ * (SUPER_ADMIN_EMAILS, voir src/lib/superAdmin.ts).
  */
 export const maxDuration = 60;
 
@@ -14,8 +16,8 @@ const MAX_CSV_BYTES = 2 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const session = await getSession().catch(() => null);
-  if (session?.role !== "admin") {
-    return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
+  if (!isSuperAdmin(session)) {
+    return NextResponse.json({ error: "Accès réservé au super-administrateur." }, { status: 403 });
   }
 
   const form = await request.formData();

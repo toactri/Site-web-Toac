@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 import { getMusculationDechargeByToken, DatabaseNotConfiguredError } from "@/lib/db";
 import { getBlobStream, isLegacyPublicUrl, BlobNotConfiguredError } from "@/lib/blob";
 import { buildDechargeFileName } from "@/lib/documentUrl";
@@ -9,7 +10,8 @@ import { buildDechargeFileName } from "@/lib/documentUrl";
 /**
  * Sert un document du store Blob privé (décharges musculation, certificats
  * médicaux, justificatifs de tarif réduit, attestations de paiement et
- * signature du trésorier — ces deux derniers pour les comptes `admin` seulement). Ces fichiers n'ont pas d'URL
+ * signature du trésorier — les attestations pour les comptes `admin`, la signature
+ * pour les super-administrateurs seulement). Ces fichiers n'ont pas d'URL
  * publique : ils ne sortent que par ici, après contrôle d'accès.
  *
  * Deux façons d'y avoir droit :
@@ -60,13 +62,15 @@ export async function serveDocument(request: NextRequest): Promise<NextResponse>
   }
 
   const session = await getSession().catch(() => null);
-  let authorized = session?.role === "admin";
+  // L'image de signature du trésorier n'est montrée qu'aux super-administrateurs.
+  const isSignature = path.startsWith("attestations/signature-");
+  let authorized = isSignature ? isSuperAdmin(session) : session?.role === "admin";
   // Renseigné quand l'accès passe par le jeton d'un dossier : sert alors à
   // nommer le fichier téléchargé d'après l'adhérent plutôt que d'après son
   // chemin technique dans le store.
   let adherent: { nom: string; prenom: string } | null = null;
 
-  if (!authorized && token) {
+  if (!authorized && token && !isSignature) {
     try {
       const decharge = await getMusculationDechargeByToken(token);
       // Le jeton n'ouvre que les deux fichiers de son propre dossier.

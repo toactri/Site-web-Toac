@@ -21,6 +21,10 @@ export const WATCHED_VARS: { name: string; role: string }[] = [
   { name: "ADMIN_USERNAME", role: "Identifiant du compte bureau" },
   { name: "ADMIN_PASSWORD", role: "Mot de passe du compte bureau" },
   { name: "ADMIN_EMAILS", role: "Emails du bureau (connexion par email avec le rôle bureau)" },
+  {
+    name: "SUPER_ADMIN_EMAILS",
+    role: "Super-administrateurs (import des adhérents, signature des attestations)",
+  },
   { name: "BREVO_API_KEY", role: "Envoi des emails (contact, notifications musculation et partenariat)" },
   { name: "MUSCULATION_NOTIFICATION_EMAILS", role: "Destinataires de la notification musculation" },
   {
@@ -33,7 +37,7 @@ export const WATCHED_VARS: { name: string; role: string }[] = [
 
 /** Noms de variables affichés dans la liste « ce que reçoit le runtime ». */
 const NAME_FILTER =
-  /BLOB|STORE|POSTGRES|DATABASE|VERCEL|NETLIFY|BREVO|SESSION_SECRET|^ADMIN_|MUSCULATION|PARTNER|^CMS_/i;
+  /BLOB|STORE|POSTGRES|DATABASE|VERCEL|NETLIFY|BREVO|SESSION_SECRET|^ADMIN_|^SUPER_ADMIN_|MUSCULATION|PARTNER|^CMS_/i;
 
 export interface VarInfo {
   name: string;
