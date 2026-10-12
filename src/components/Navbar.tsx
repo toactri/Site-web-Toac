@@ -11,7 +11,6 @@ const BUREAU_ITEM: NavItem = {
   children: [
     { label: "Dossiers adhérents", href: "/espace-adherents/bureau" },
     { label: "Demandes d'adhésion", href: "/espace-adherents/bureau/inscriptions" },
-    { label: "Pré-inscriptions", href: "/espace-adherents/bureau/preinscriptions" },
     { label: "Avantages partenaires", href: "/espace-adherents/bureau/partenaires" },
     { label: "Décharges musculation", href: "/espace-adherents/bureau/musculation" },
     { label: "Attestations de paiement", href: "/espace-adherents/bureau/attestations" },

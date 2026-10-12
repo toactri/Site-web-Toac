@@ -108,28 +108,6 @@ function ensureSchema(): Promise<void> {
           assurance TEXT
         );
 
-        CREATE TABLE IF NOT EXISTS preinscriptions (
-          id SERIAL PRIMARY KEY,
-          recue_le TIMESTAMPTZ NOT NULL DEFAULT now(),
-          email TEXT NOT NULL,
-          nom TEXT NOT NULL,
-          prenom TEXT NOT NULL,
-          telephone TEXT NOT NULL,
-          date_naissance TEXT NOT NULL,
-          permis_conduire BOOLEAN NOT NULL DEFAULT false,
-          numero_permis TEXT,
-          benevolat TEXT[] NOT NULL DEFAULT '{}',
-          reglement_accepte BOOLEAN NOT NULL DEFAULT false,
-          trifonction TEXT[] NOT NULL DEFAULT '{}',
-          brevets_federaux TEXT,
-          arbitrage TEXT,
-          soutien_partenaire TEXT,
-          stage_argeles TEXT,
-          stage_montagne TEXT,
-          questions_suggestions TEXT,
-          statut TEXT NOT NULL
-        );
-
         CREATE TABLE IF NOT EXISTS partner_signups (
           id SERIAL PRIMARY KEY,
           recue_le TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -332,91 +310,6 @@ function ensureSchema(): Promise<void> {
       .then(() => undefined);
   }
   return schemaReady;
-}
-
-export interface PreinscriptionRow {
-  id: number;
-  recue_le: string;
-  email: string;
-  nom: string;
-  prenom: string;
-  telephone: string;
-  date_naissance: string;
-  permis_conduire: boolean;
-  numero_permis: string | null;
-  benevolat: string[];
-  reglement_accepte: boolean;
-  trifonction: string[];
-  brevets_federaux: string | null;
-  arbitrage: string | null;
-  soutien_partenaire: string | null;
-  stage_argeles: string | null;
-  stage_montagne: string | null;
-  questions_suggestions: string | null;
-  statut: string;
-}
-
-export interface NouvellePreinscription {
-  email: string;
-  nom: string;
-  prenom: string;
-  telephone: string;
-  dateNaissance: string;
-  permisConduire: boolean;
-  numeroPermis: string | null;
-  benevolat: string[];
-  reglementAccepte: boolean;
-  trifonction: string[];
-  brevetsFederaux: string;
-  arbitrage: string;
-  soutienPartenaire: string;
-  stageArgeles: string;
-  stageMontagne: string;
-  questionsSuggestions: string;
-  statut: string;
-}
-
-/** Enregistre une pré-inscription (formulaire "Nous rejoindre", étape 1 du parcours). */
-export async function insertPreinscription(p: NouvellePreinscription): Promise<number> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{ id: number }>(
-    `
-    INSERT INTO preinscriptions (
-      email, nom, prenom, telephone, date_naissance, permis_conduire, numero_permis,
-      benevolat, reglement_accepte, trifonction, brevets_federaux, arbitrage,
-      soutien_partenaire, stage_argeles, stage_montagne, questions_suggestions, statut
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
-    RETURNING id
-    `,
-    [
-      p.email,
-      p.nom,
-      p.prenom,
-      p.telephone,
-      p.dateNaissance,
-      p.permisConduire,
-      p.numeroPermis,
-      p.benevolat,
-      p.reglementAccepte,
-      p.trifonction,
-      p.brevetsFederaux,
-      p.arbitrage,
-      p.soutienPartenaire,
-      p.stageArgeles,
-      p.stageMontagne,
-      p.questionsSuggestions,
-      p.statut,
-    ]
-  );
-  return rows[0].id;
-}
-
-export async function getPreinscriptions(): Promise<PreinscriptionRow[]> {
-  await ensureSchema();
-  const { rows } = await getPool().query<PreinscriptionRow>(
-    "SELECT * FROM preinscriptions ORDER BY recue_le DESC"
-  );
-  return rows;
 }
 
 export interface PartnerSignupRow {
