@@ -112,7 +112,7 @@ const FAMILLES: Famille[] = [
         responsable: "Erwan Lejean, Ambre Mahinc",
       },
       {
-        nom: "Catering",
+        nom: "Restauration",
         mission: "Buvette, repas bénévoles, food-trucks, ravitaillements",
         responsable: "Lionel Kervadec, Cyrille Blanchardon, Alain Bertrand",
       },
@@ -461,9 +461,9 @@ export default async function Tdl2027Page() {
             <p className="mt-1 font-display text-xl uppercase">Vélo · Parking</p>
           </div>
           <div className="rounded-md border-t-4 border-toac-pink-500 bg-white/10 p-4">
-            <p className="font-semibold">Un futur responsable</p>
-            <p className="mt-1 font-display text-xl uppercase">Swimrun</p>
-            <p className="mt-1 text-sm text-white/70">Pour seconder Julien Dubois.</p>
+            <p className="font-semibold">Deux futurs responsables de pôles</p>
+            <p className="mt-1 font-display text-xl uppercase">Swimrun - Ravitaillements</p>
+            <p className="mt-1 text-sm text-white/70">Apprendre en 2027 pour prendre la responsabilité en 2028.</p>
           </div>
         </div>
       </div>
