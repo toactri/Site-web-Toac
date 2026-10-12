@@ -44,6 +44,11 @@ export default async function EspaceAdherentsAccueil() {
       texte: "Documents du club, canaux de communication et informations internes.",
     },
     {
+      href: "/espace-adherents/comptes-rendus",
+      titre: "Comptes rendus de course",
+      texte: "Les récits de course des Toacistes : Ironman, Embrunman, marathons, trails…",
+    },
+    {
       href: "/attestation-adhesion",
       titre: "Attestation de paiement",
       texte: "Recevez par email l'attestation de votre adhésion, pour votre CSE.",

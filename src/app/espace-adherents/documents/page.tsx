@@ -62,6 +62,14 @@ export default async function DocumentsPage() {
         <span className="block text-toac-blue-900/70">Bilan 2026, pôles, rôles, missions et comment s&apos;investir.</span>
       </Link>
 
+      <Link
+        href="/espace-adherents/comptes-rendus"
+        className="mt-3 block rounded-md border border-toac-gray-200 border-l-4 border-l-toac-pink-500 bg-white px-4 py-3 text-sm shadow-sm hover:bg-toac-gray-50"
+      >
+        <span className="font-medium text-toac-blue-950">Comptes rendus de course</span>
+        <span className="block text-toac-blue-900/70">Les récits des Toacistes, par type d&apos;épreuve.</span>
+      </Link>
+
       <div className="mt-8 space-y-4">
         {pageBlocks?.map((block) => (
           <div key={block.id} id={block.anchor ?? undefined} className="relative scroll-mt-24 rounded-lg">
