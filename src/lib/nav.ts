@@ -31,7 +31,14 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Natation", href: "/natation" },
     ],
   },
-  { label: "Triathlons du Lauragais", href: "/triathlons-du-lauragais" },
+  {
+    label: "Triathlons du Lauragais",
+    href: "/triathlons-du-lauragais",
+    children: [
+      { label: "Édition 2027", href: "/triathlons-du-lauragais" },
+      { label: "Réunion de lancement 2027", href: "/espace-adherents/tdl-2027", protected: true },
+    ],
+  },
   { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/contact" },
 ];
