@@ -36,7 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/triathlons-du-lauragais",
     children: [
       { label: "Édition 2027", href: "/triathlons-du-lauragais" },
-      { label: "Réunion de lancement 2027", href: "/espace-adherents/tdl-2027", protected: true },
+      { label: "Infos Bénévoles TOAC 2027", href: "/espace-adherents/tdl-2027", protected: true },
     ],
   },
   { label: "FAQ", href: "/faq" },
