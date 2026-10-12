@@ -5,6 +5,7 @@ import Link from "next/link";
 import EnsureCmsBlocks, { type EnsureBlockSpec } from "@/components/EnsureCmsBlocks";
 import { CmsEditableText, CmsAddTile } from "@/components/cms-edit";
 import AccordionBlock from "@/components/AccordionBlock";
+import PageTabs, { type PageTab } from "@/components/PageTabs";
 import { renderRichText } from "@/lib/rich-text";
 import { getCmsPageBlocks, getCmsHiddenBlocks, getCmsTrainingSessions, type CmsPageBlock } from "@/lib/cms";
 import { sportSlotsTableWithLocation } from "@/lib/training";
@@ -42,8 +43,6 @@ const DEFAULT_SECTIONS: Record<string, { heading: string; body: string }> = {
     ].join("\n"),
   },
 };
-
-const TEXT_SLOTS = [TESTS_CHRONO_SLOT];
 
 function TextSection({ slot, block }: { slot: string; block?: CmsPageBlock }) {
   const fallback = DEFAULT_SECTIONS[slot];
@@ -94,12 +93,34 @@ export default async function CourseAPiedPage() {
     .filter(([slot]) => !blockBySlot.has(slot) && !hiddenSlots.has(slot))
     .map(([slot, s]) => ({ slot, heading: s.heading, body: s.body }));
 
-  // Blocs ajoutés depuis le dashboard ("+ Ajouter un bloc"), affichés à la suite.
+  // Blocs ajoutés depuis le dashboard ("+ Ajouter un bloc"), affichés sous les onglets.
   const knownSlots = new Set(Object.keys(DEFAULT_SECTIONS));
   const extraBlocks = (cmsBlocks ?? []).filter((b) => !b.slot || !knownSlots.has(b.slot));
 
-  const textSection = (slot: string) =>
-    hiddenSlots.has(slot) ? null : <TextSection key={slot} slot={slot} block={blockBySlot.get(slot)} />;
+  const tabs: PageTab[] = [
+    {
+      id: "creneaux",
+      label: "Créneaux",
+      content: (
+        <section id="course-creneaux" className="scroll-mt-24">
+          <h2 className="font-display text-lg uppercase text-toac-blue-950">Créneaux d&apos;entraînement</h2>
+          <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">
+            {creneauxTable ? renderRichText(creneauxTable) : <p>Les créneaux sont affichés dans le planning de la semaine.</p>}
+          </div>
+          <p className="mt-2 text-xs text-toac-blue-900/70">
+            Détails et lieux de rendez-vous : <Link href="/entrainements" className="underline hover:text-toac-pink-500">planning de la semaine</Link>.
+          </p>
+        </section>
+      ),
+    },
+  ];
+  if (!hiddenSlots.has(TESTS_CHRONO_SLOT)) {
+    tabs.push({
+      id: "tests-chrono",
+      label: "Tests chrono",
+      content: <TextSection slot={TESTS_CHRONO_SLOT} block={blockBySlot.get(TESTS_CHRONO_SLOT)} />,
+    });
+  }
 
   return (
     <Suspense fallback={null}>
@@ -107,19 +128,11 @@ export default async function CourseAPiedPage() {
         <EnsureCmsBlocks slug="course-a-pied" blocks={missingSlots} />
         <h1 className="section-title font-display text-3xl uppercase text-toac-blue-950">Course à pied</h1>
 
-        <div className="mt-10 space-y-8">
-          {creneauxTable && (
-            <section id="course-creneaux" className="scroll-mt-24">
-              <h2 className="font-display text-lg uppercase text-toac-blue-950">Créneaux d&apos;entraînement</h2>
-              <div className="mt-3 space-y-3 text-sm text-toac-blue-900/90">{renderRichText(creneauxTable)}</div>
-              <p className="mt-2 text-xs text-toac-blue-900/70">
-                Détails et lieux de rendez-vous : <Link href="/entrainements" className="underline hover:text-toac-pink-500">planning de la semaine</Link>.
-              </p>
-            </section>
-          )}
+        <div className="mt-10">
+          <PageTabs tabs={tabs} />
+        </div>
 
-          {TEXT_SLOTS.map(textSection)}
-
+        <div className="mt-8 space-y-8">
           {extraBlocks.map((block) =>
             block.block_type === "accordion" ? (
               <AccordionBlock key={block.id} block={block} />
