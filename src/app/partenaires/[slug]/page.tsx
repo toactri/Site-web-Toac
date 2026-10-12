@@ -100,11 +100,6 @@ export default async function PartenairePage({
         </div>
       </div>
 
-      {/* Avantage adhérents : seule son existence est signalée ici ; le
-          détail (champ de la fiche partenaire, dashboard → Partenaires) est
-          réservé à l'espace adhérents, où il s'édite aussi. */}
-      {partner?.member_benefits?.trim() && <MemberBenefitTeaser partnerName={page.title} />}
-
       <CmsPageBlocks
         slug={slug}
         fallback={
@@ -113,6 +108,11 @@ export default async function PartenairePage({
           </p>
         }
       />
+
+      {/* Avantage adhérents : seule son existence est signalée ici ; le
+          détail (champ de la fiche partenaire, dashboard → Partenaires) est
+          réservé à l'espace adhérents, où il s'édite aussi. */}
+      {partner?.member_benefits?.trim() && <MemberBenefitTeaser partnerName={page.title} />}
 
       {hasSignupForm && !signupSent && (
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
