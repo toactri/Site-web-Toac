@@ -30,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Lieux - Points de rdv", href: "/entrainements/points-de-rdv" },
       { label: "Natation", href: "/natation" },
       { label: "Vélo", href: "/velo" },
+      { label: "Tests chrono", href: "/tests-chrono" },
     ],
   },
   {

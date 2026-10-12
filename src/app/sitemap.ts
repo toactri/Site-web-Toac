@@ -15,6 +15,7 @@ const ROUTES = [
   "/entrainements/points-de-rdv",
   "/natation",
   "/velo",
+  "/tests-chrono",
   "/musculation",
   "/triathlons-du-lauragais",
   "/faq",
