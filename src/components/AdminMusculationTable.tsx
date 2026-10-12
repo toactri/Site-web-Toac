@@ -99,9 +99,12 @@ function NotificationEtat({ decharge: d }: { decharge: MusculationDechargeRow })
 export default function AdminMusculationTable({
   decharges,
   validations,
+  peutValider,
 }: {
   decharges: MusculationDechargeRow[];
   validations: MusculationValidationRow[];
+  /** Le compte connecté peut-il cocher / retirer « validé musculation » ? */
+  peutValider: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -343,16 +346,18 @@ export default function AdminMusculationTable({
                       Décharge et certificat médical conservés hors du site (transmis avant la mise en place
                       du formulaire en ligne).
                     </p>
-                    <div className="mt-4">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteValidation(v)}
-                        disabled={deletingValidationId === v.id}
-                        className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
-                      >
-                        {deletingValidationId === v.id ? "Suppression…" : "Retirer de la liste"}
-                      </button>
-                    </div>
+                    {peutValider && (
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteValidation(v)}
+                          disabled={deletingValidationId === v.id}
+                          className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          {deletingValidationId === v.id ? "Suppression…" : "Retirer de la liste"}
+                        </button>
+                      </div>
+                    )}
                     {deleteError && deletingValidationId === null && (
                       <p role="alert" className="mt-3 text-xs font-medium text-red-600">
                         {deleteError}

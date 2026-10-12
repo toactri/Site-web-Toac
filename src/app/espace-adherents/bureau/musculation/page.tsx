@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { canValidateMusculation } from "@/lib/musculationValidateurs";
 import {
   getMusculationDecharges,
   getMusculationValidations,
@@ -30,6 +31,8 @@ export default async function BureauMusculationPage({
   if (session.role !== "admin") redirect("/espace-adherents");
 
   const { saison: saisonDemandee } = await searchParams;
+  // Cocher « validé musculation » est réservé à quelques membres du bureau.
+  const peutValider = canValidateMusculation(session);
 
   let decharges: MusculationDechargeRow[] = [];
   let validations: MusculationValidationRow[] = [];
@@ -46,7 +49,7 @@ export default async function BureauMusculationPage({
     ]);
     saisons = stats.map((s) => s.saison);
     saison = saisonDemandee && saisons.includes(saisonDemandee) ? saisonDemandee : (saisons[0] ?? null);
-    if (saison) adherents = await getAdherentsMusculation(saison);
+    if (saison && peutValider) adherents = await getAdherentsMusculation(saison);
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) {
       dbError = true;
@@ -63,15 +66,17 @@ export default async function BureauMusculationPage({
       <p className="mt-4 text-toac-blue-900/80">
         Décharges signées et certificats médicaux transmis via la page « Musculation » — un lien devient
         officiel une fois validé (relu et confirmé) par l&apos;adhérent. Les adhérents dont le dossier a été
-        transmis sur une saison précédente (valable 3 ans) peuvent être cochés ci-dessous.
+        transmis sur une saison précédente (valable 3 ans) apparaissent en « Validée (bureau) ».
       </p>
       <div className="mt-8">
         {dbError ? (
           <DbSetupNotice />
         ) : (
           <>
-            <MusculationValidationChecklist saison={saison} saisons={saisons} adherents={adherents} />
-            <AdminMusculationTable decharges={decharges} validations={validations} />
+            {peutValider && (
+              <MusculationValidationChecklist saison={saison} saisons={saisons} adherents={adherents} />
+            )}
+            <AdminMusculationTable decharges={decharges} validations={validations} peutValider={peutValider} />
           </>
         )}
       </div>
