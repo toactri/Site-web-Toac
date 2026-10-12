@@ -29,6 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Planning de la semaine", href: "/entrainements" },
       { label: "Lieux - Points de rdv", href: "/entrainements/points-de-rdv" },
       { label: "Natation", href: "/natation" },
+      { label: "Vélo", href: "/velo" },
     ],
   },
   {
