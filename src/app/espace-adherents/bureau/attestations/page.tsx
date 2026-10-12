@@ -57,7 +57,7 @@ export default async function BureauAttestationsPage() {
       <p className="mt-4 text-toac-blue-900/80">
         Les adhérents demandent leur attestation (licence FFTri + cotisation club, pour leur CSE) sur{" "}
         <Link href="/attestation-adhesion" className="underline">/attestation-adhesion</Link>. Elle est générée à
-        partir de la liste importée ci-dessous et envoyée à l&apos;email de leur dossier.{" "}
+        partir de la liste des adhérents et envoyée à l&apos;email de leur dossier.{" "}
         {ouvert ? (
           <strong className="text-emerald-700">Service ouvert.</strong>
         ) : (
