@@ -1,8 +1,9 @@
 /**
- * Rubriques des comptes rendus de course : un sous-dossier du Drive du club
- * chacune. Partagé entre la page (liens vers les dossiers), le formulaire
- * d'envoi (liste des catégories) et la route qui range le PDF dans le Drive —
- * celle-ci n'accepte que ces identifiants de dossier.
+ * Rubriques connues des comptes rendus de course : un sous-dossier du Drive du
+ * club chacune. La liste affichée vient du Drive lui-même (voir
+ * src/lib/comptesRendusDrive.ts) ; celle-ci donne le titre, l'accroche, le
+ * préfixe de nom de fichier et l'ordre des dossiers connus, et sert de repli
+ * si le Drive est injoignable.
  */
 
 export const DOSSIER_DRIVE_ID = "1dOpD_dMQ8Th-eDHKImZizeLdHg2_UyV9";

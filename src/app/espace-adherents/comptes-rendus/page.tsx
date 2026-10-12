@@ -3,7 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getAdhesionByEmail } from "@/lib/db";
-import { DOSSIER_DRIVE_ID, RUBRIQUES } from "@/lib/comptesRendus";
+import { DOSSIER_DRIVE_ID } from "@/lib/comptesRendus";
+import { getRubriques } from "@/lib/comptesRendusDrive";
 import CompteRenduUploadForm from "@/components/CompteRenduUploadForm";
 
 export const metadata: Metadata = {
@@ -12,8 +13,9 @@ export const metadata: Metadata = {
 };
 
 // Les comptes rendus restent dans le Drive du club : la page ne fait que
-// renvoyer vers chaque sous-dossier, un CR ajouté au Drive est donc visible
-// sans toucher au site. Réservé aux adhérents : ce sont des récits personnels.
+// renvoyer vers chaque sous-dossier, lus dans le Drive (voir
+// src/lib/comptesRendusDrive.ts). Un CR ou un dossier ajouté au Drive est donc
+// visible sans toucher au site. Réservé aux adhérents : ce sont des récits personnels.
 
 const DOSSIER_DRIVE = `https://drive.google.com/drive/folders/${DOSSIER_DRIVE_ID}`;
 
@@ -24,6 +26,7 @@ export default async function ComptesRendusPage() {
   // Le prénom pré-rempli vient de la fiche adhérent ; à défaut, du nom de session.
   const adhesion = await getAdhesionByEmail(session.username).catch(() => null);
   const prenom = adhesion?.prenom ?? session.name.split(" ")[0] ?? "";
+  const rubriques = await getRubriques();
   const envoiConfigure = Boolean(process.env.CR_DRIVE_UPLOAD_URL && process.env.CR_DRIVE_UPLOAD_SECRET);
 
   return (
@@ -37,7 +40,7 @@ export default async function ComptesRendusPage() {
       </p>
 
       <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-        {RUBRIQUES.map((r) => (
+        {rubriques.map((r) => (
           <li key={r.id}>
             <a
               href={`https://drive.google.com/drive/folders/${r.id}`}
@@ -61,7 +64,7 @@ export default async function ComptesRendusPage() {
       <section className="mt-10 rounded-md border border-toac-gray-200 bg-white p-5 shadow-sm">
         <h2 className="font-display text-lg uppercase text-toac-blue-950">Partager mon compte rendu</h2>
         {envoiConfigure ? (
-          <CompteRenduUploadForm prenomParDefaut={prenom} />
+          <CompteRenduUploadForm prenomParDefaut={prenom} rubriques={rubriques} />
         ) : (
           <p className="mt-2 text-sm text-toac-blue-900/80">
             Contactez le bureau via le{" "}

@@ -4,10 +4,10 @@ import { getBlobStream, deleteBlobs, BlobNotConfiguredError } from "@/lib/blob";
 import {
   BLOB_PREFIX,
   MAX_COMPTE_RENDU_BYTES,
-  RUBRIQUES,
   anneesProposees,
   nomFichierCompteRendu,
 } from "@/lib/comptesRendus";
+import { getRubriques } from "@/lib/comptesRendusDrive";
 
 // Relecture du PDF dans le store puis envoi au script Google : quelques
 // secondes pour un fichier de 20 Mo, mais un script Apps Script à froid peut
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     prenom?: unknown;
   } | null;
   const pathname = typeof body?.pathname === "string" ? body.pathname : "";
-  const rubrique = RUBRIQUES.find((r) => r.id === body?.rubrique);
+  const rubrique = (await getRubriques()).find((r) => r.id === body?.rubrique);
   const annee = Number(body?.annee);
   const course = typeof body?.course === "string" ? body.course.trim().slice(0, 80) : "";
   const prenom = typeof body?.prenom === "string" ? body.prenom.trim().slice(0, 60) : "";

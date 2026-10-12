@@ -7,9 +7,9 @@ import { formatBytes } from "@/lib/uploadLimits";
 import {
   BLOB_PREFIX,
   MAX_COMPTE_RENDU_BYTES,
-  RUBRIQUES,
   anneesProposees,
   nomFichierCompteRendu,
+  type RubriqueCompteRendu,
 } from "@/lib/comptesRendus";
 
 const fileInputClass =
@@ -20,9 +20,15 @@ const fileInputClass =
  * vers le store Blob (sans la limite de 4,5 Mo des fonctions), puis
  * /api/comptes-rendus le range dans le sous-dossier Drive de la rubrique.
  */
-export default function CompteRenduUploadForm({ prenomParDefaut }: { prenomParDefaut: string }) {
+export default function CompteRenduUploadForm({
+  prenomParDefaut,
+  rubriques,
+}: {
+  prenomParDefaut: string;
+  rubriques: RubriqueCompteRendu[];
+}) {
   const annees = anneesProposees();
-  const [rubriqueId, setRubriqueId] = useState(RUBRIQUES[0].id);
+  const [rubriqueId, setRubriqueId] = useState(rubriques[0].id);
   const [annee, setAnnee] = useState(annees[0]);
   const [course, setCourse] = useState("");
   const [prenom, setPrenom] = useState(prenomParDefaut);
@@ -30,7 +36,7 @@ export default function CompteRenduUploadForm({ prenomParDefaut }: { prenomParDe
   const [message, setMessage] = useState<string | null>(null);
   const [lien, setLien] = useState<string | null>(null);
 
-  const rubrique = RUBRIQUES.find((r) => r.id === rubriqueId) ?? RUBRIQUES[0];
+  const rubrique = rubriques.find((r) => r.id === rubriqueId) ?? rubriques[0];
   const apercu = course.trim() && prenom.trim()
     ? nomFichierCompteRendu(annee, rubrique.prefixe, course, prenom)
     : null;
@@ -89,7 +95,7 @@ export default function CompteRenduUploadForm({ prenomParDefaut }: { prenomParDe
         <div>
           <label htmlFor="cr-rubrique" className={labelClass}>Catégorie</label>
           <select id="cr-rubrique" value={rubriqueId} onChange={(e) => setRubriqueId(e.target.value)} className={inputClass}>
-            {RUBRIQUES.map((r) => (
+            {rubriques.map((r) => (
               <option key={r.id} value={r.id}>{r.titre}</option>
             ))}
           </select>

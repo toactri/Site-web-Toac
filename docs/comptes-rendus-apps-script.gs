@@ -1,8 +1,11 @@
 /**
  * Dépôt des comptes rendus de course dans le Drive du club.
  *
- * Appelé par le site (route /api/comptes-rendus) : reçoit un PDF en base64 et
- * le crée dans le sous-dossier demandé de « Comptes rendus de course ».
+ * Appelé par le site :
+ *  - action « list » : renvoie les sous-dossiers de « Comptes rendus de course »
+ *    (les rubriques affichées sur le site) ;
+ *  - sinon (route /api/comptes-rendus) : reçoit un PDF en base64 et le crée
+ *    dans le sous-dossier demandé.
  *
  * Installation (une fois, avec un compte qui peut écrire dans le dossier) :
  *  1. script.google.com → Nouveau projet → coller ce fichier.
@@ -11,6 +14,9 @@
  *     Exécuter en tant que : Moi, Qui a accès : Tout le monde.
  *     Autoriser l'accès au Drive quand Google le demande.
  *  4. Copier l'URL du déploiement (…/exec) dans CR_DRIVE_UPLOAD_URL (Vercel).
+ *
+ * Mise à jour du script : Déployer → Gérer les déploiements → crayon →
+ * Version : « Nouvelle version ». L'URL /exec ne change pas.
  */
 
 const SECRET = "A_REMPLACER";
@@ -20,6 +26,16 @@ function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
     if (req.secret !== SECRET) return reponse({ ok: false, error: "secret invalide" });
+
+    if (req.action === "list") {
+      const dossiers = [];
+      const it = DriveApp.getFolderById(DOSSIER_RACINE).getFolders();
+      while (it.hasNext()) {
+        const d = it.next();
+        dossiers.push({ id: d.getId(), name: d.getName() });
+      }
+      return reponse({ ok: true, folders: dossiers });
+    }
 
     // On n'écrit que dans un sous-dossier direct du dossier des comptes rendus.
     const dossier = DriveApp.getFolderById(req.folderId);
