@@ -48,7 +48,6 @@ function authenticateEnvAdmin(username: string, password: string): Account | nul
     passwordHash: "",
     name: process.env.ADMIN_NAME?.trim() || "Bureau TOAC",
     role: "admin",
-    memberId: null,
   };
 }
 
@@ -73,6 +72,5 @@ export function buildSessionTokenForAccount(account: Account): string {
     username: account.username,
     name: account.name,
     role: account.role,
-    memberId: account.memberId,
   });
 }

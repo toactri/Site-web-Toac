@@ -39,16 +39,7 @@ Tant que vous n'avez pas importé vos propres comptes (voir § 4), deux comptes 
    (`SESSION_SECRET`, et éventuellement `BREVO_API_KEY` / `BREVO_FROM_EMAIL`).
 4. Déployez. Le plan gratuit ("Hobby") de Vercel suffit pour ce site.
 
-Important : `src/data/members.json` et `src/data/accounts.json` (les vraies données adhérents) sont
-ignorés par git — ils ne seront donc **pas** présents sur Vercel après un déploiement via git. Deux options :
-
-- **Solution simple (club de cette taille)** : importez le CSV et générez les comptes en local (§ 4), puis
-  committez ces fichiers dans un **dépôt privé** uniquement si vous acceptez ce compromis, en connaissance du
-  risque RGPD si le dépôt venait à être rendu public un jour.
-- **Solution recommandée** : gardez le dépôt public/sans données réelles, et à la place, uploadez
-  `members.json` / `accounts.json` directement depuis l'onglet **Deployments → Source** de Vercel, ou migrez
-  ces deux fichiers vers un stockage clé-valeur (Vercel KV) le jour où le club voudra automatiser les mises à
-  jour sans repasser par un déploiement.
+Aucune donnée adhérent n'est stockée dans le dépôt : elles vivent dans la base Postgres (§ 4 et § 5bis).
 
 ## 3. Remplacer les placeholders
 
@@ -63,56 +54,28 @@ ignorés par git — ils ne seront donc **pas** présents sur Vercel après un d
 | `DATABASE_URL` | `.env` (Vercel ou local) | Voir § 5bis. |
 | `BREVO_API_KEY` | `.env` | Voir § 6. |
 
-## 4. Importer les adhérents (CSV) et gérer les comptes
+## 4. Adhérents et connexion à l'espace adhérents
 
-Les dossiers adhérents vivent dans la base de données du site (table `members`, voir § 5bis) — jamais
-dans le dépôt git. `src/data/accounts.sample.json` ne contient que des données factices (comptes de
-démo), utilisées tant que `src/data/accounts.json` n'existe pas.
+Les adhérents de la saison vivent dans la table `adherents_saison`, alimentée par l'import de l'onglet
+« Dossiers adhésion » du Google Sheets dans **Espace Adhérents → Bureau → Attestations** (un import
+remplace toute la saison). Cette table sert à la fois à la vue bureau (liste et indicateurs), aux
+attestations de paiement, au suivi musculation et à la page **Suivi de mon dossier** de chaque adhérent.
 
-### Importer le Google Sheets "Dossiers-2025-2026" (en local, jamais via git)
+### Connexion des adhérents : par email, sans compte
 
-Cette commande écrit directement dans la base de données de production : les données personnelles
-réelles ne transitent jamais par le dépôt.
+Aucun compte à créer : l'adhérent saisit sur `/connexion` l'email utilisé pour son adhésion et reçoit un
+lien + un code à 6 chiffres (15 min, usage unique, envoyés par Brevo). S'il ne sait plus quelle adresse il a
+donnée, il se fait reconnaître par nom, prénom et date de naissance : l'email part vers l'adresse de son
+dossier, affichée masquée. Un adhérent absent de la saison la plus récente ne peut plus se connecter.
 
-1. Sur votre ordinateur, clonez le dépôt, `npm install`, puis copiez dans `.env.local` la **même**
-   valeur de `DATABASE_URL` que celle configurée sur Vercel (Settings → Environment Variables).
-2. Dans Google Sheets : `Fichier → Télécharger → Valeurs séparées par des virgules (.csv)`.
-3. Lancez :
-   ```bash
-   npm run import-csv -- chemin/vers/export.csv
-   ```
-   Chaque ligne est identifiée par le nom + prénom (l'export du club n'a pas de colonne email) :
-   relancer la commande après une mise à jour du Sheets met à jour les dossiers existants au lieu de
-   les dupliquer. Les lignes de total/pourcentage en haut de l'export sont ignorées automatiquement.
+Les adresses listées dans `ADMIN_EMAILS` (séparées par des virgules) se connectent de la même façon avec le
+rôle bureau. Le compte `ADMIN_USERNAME` / `ADMIN_PASSWORD` reste disponible en secours (lien « Accès bureau
+par identifiant » de la page de connexion).
 
-Colonnes attendues (l'ordre n'importe pas, en-têtes insensibles à la casse/accents) : `Nom`, `Prénom`,
-`statut`, `Pay asso` (paiement cotisation), `Formulaire adhésion`, `justif` (justificatif tarif réduit),
-`Chèque` (→ caution), `GG Group`, `Whatsapp`, `Licence demandée`, `Licence payée` (valeurs `Oui`/`Non`).
-`Email` est optionnel.
+### Comptes locaux (développement)
 
-Une fois importés, les dossiers apparaissent dans **Espace Adhérents → Bureau → Dossiers adhérents**, où
-chaque case (paiement, caution, groupe Google, WhatsApp, licence, justificatif…) peut être cochée/décochée
-directement sur le site — les nouvelles demandes d'adhésion en ligne (page **Nous rejoindre**) y
-apparaissent aussi automatiquement, sans réimport, et sont rapprochées du bon dossier par le nom.
-
-### Gérer les comptes de connexion
-
-```bash
-npm run accounts -- list
-npm run accounts -- add jean.dupont motdepasse "Jean Dupont" member 1
-npm run accounts -- passwd jean.dupont nouveaumotdepasse
-npm run accounts -- remove jean.dupont
-
-# Génère automatiquement un compte (identifiant + mot de passe aléatoire)
-# pour chaque adhérent de la base qui n'en a pas encore :
-npm run accounts -- bulk-from-members
-```
-
-Le `[memberId]` passé à `add`/généré par `bulk-from-members` est l'identifiant numérique du dossier dans
-la base (visible dans **Bureau → Dossiers adhérents**). `bulk-from-members` a aussi besoin de
-`DATABASE_URL` dans `.env.local` (voir ci-dessus). Il affiche en clair, une seule fois dans le terminal,
-les identifiants générés à transmettre aux adhérents (rien n'est jamais stocké en clair : seul le hash
-bcrypt est écrit dans `accounts.json`).
+`npm run accounts -- list|add|passwd|remove` gère `src/data/accounts.json` (ignoré par git, absent en
+production) ; `src/data/accounts.sample.json` contient des comptes de démo factices.
 
 ## 5. Paiement en ligne (retiré)
 
@@ -144,9 +107,8 @@ manipulation manuelle :
 - **Les demandes d'adhésion** : la page **Nous rejoindre** propose désormais un formulaire d'adhésion
   directement sur le site (à la place du Google Form externe). Chaque envoi est enregistré dans une
   table `inscriptions`, consultable dans **Espace Adhérents → Bureau → Demandes d'adhésion**.
-- **Les dossiers adhérents** : table `members`, alimentée par l'import CSV (§ 4) et automatiquement
-  complétée par chaque nouvelle demande d'adhésion en ligne. Consultable et **modifiable** (cases à
-  cocher) dans **Espace Adhérents → Bureau → Dossiers adhérents**.
+- **Les adhérents de la saison** : table `adherents_saison`, alimentée par l'import du Google Sheets
+  (§ 4), consultable dans **Espace Adhérents → Bureau**.
 
 ### Mise en place (5 minutes, gratuit)
 
@@ -157,12 +119,11 @@ manipulation manuelle :
      [supabase.com](https://supabase.com) et copiez la chaîne de connexion Postgres fournie.
 2. Renseignez `DATABASE_URL` dans vos variables d'environnement (Vercel : **Settings → Environment
    Variables** ; en local : `.env.local`).
-3. C'est tout : les tables (`commandes`, `inscriptions`, `members`) sont créées automatiquement au
+3. C'est tout : les tables sont créées automatiquement au
    premier appel, aucune migration à lancer à la main.
 
 Tant que `DATABASE_URL` n'est pas configurée, le site continue de fonctionner normalement (paiement,
-formulaire d'adhésion), mais les pages **Bureau → Commandes** / **Bureau → Demandes d'adhésion** /
-**Bureau → Dossiers adhérents** affichent un message d'installation au lieu du tableau, et rien n'est
+formulaire d'adhésion), mais les pages **Bureau** affichent un message d'installation au lieu du tableau, et rien n'est
 conservé.
 
 ## 6. Formulaire de contact (emails)
@@ -308,7 +269,7 @@ Tables utilisées (créées automatiquement) : `adherents_saison`, `attestations
 - Protection au niveau du **proxy** Next.js (`src/proxy.ts`, anciennement "middleware") : toute tentative
   d'accès direct par URL à `/espace-adherents/*` sans session valide redirige vers `/connexion`.
 - Double vérification côté serveur dans chaque page protégée (défense en profondeur).
-- Les données adhérents (`src/data/members.json`, `src/data/accounts.json`) ne sont jamais servies au
+- Les données adhérents (base Postgres, `src/data/accounts.json`) ne sont jamais servies au
   client : elles sont lues côté serveur (Server Components / Route Handlers) et seul le rendu HTML final
   (ou les champs strictement nécessaires) atteint le navigateur.
 

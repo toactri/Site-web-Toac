@@ -4,17 +4,17 @@
  *
  * Usage :
  *   npm run accounts -- list
- *   npm run accounts -- add <username> <password> <"Nom Prénom"> <member|admin> [memberId]
+ *   npm run accounts -- add <username> <password> <"Nom Prénom"> <member|admin>
  *   npm run accounts -- passwd <username> <nouveauMotDePasse>
  *   npm run accounts -- remove <username>
- *   npm run accounts -- bulk-from-members   (génère un compte pour chaque adhérent de la base qui n'en a pas encore)
+ *
+ * Les adhérents n'ont pas besoin de compte : ils se connectent par email
+ * (lien + code), voir src/lib/emailLogin.ts.
  */
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { loadEnvLocal } from "./load-env";
-import { getMembers, closeDb } from "../src/lib/db";
 import type { Account } from "../src/lib/types";
 
 loadEnvLocal();
@@ -30,30 +30,18 @@ function saveAccounts(accounts: Account[]) {
   fs.writeFileSync(ACCOUNTS_PATH, JSON.stringify(accounts, null, 2) + "\n", "utf8");
 }
 
-function generatePassword(): string {
-  return crypto.randomBytes(6).toString("base64url");
-}
-
-function slugifyUsername(firstName: string, lastName: string): string {
-  return `${firstName}.${lastName}`
-    .normalize("NFD")
-    .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
-    .toLowerCase()
-    .replace(/[^a-z0-9.]/g, "");
-}
-
 async function cmdList() {
   const accounts = loadAccounts();
   console.table(
-    accounts.map((a) => ({ username: a.username, name: a.name, role: a.role, memberId: a.memberId }))
+    accounts.map((a) => ({ username: a.username, name: a.name, role: a.role }))
   );
 }
 
 async function cmdAdd(args: string[]) {
-  const [username, password, name, role, memberId] = args;
+  const [username, password, name, role] = args;
   if (!username || !password || !name || !role) {
     console.error(
-      'Usage : npm run accounts -- add <username> <password> "<Nom Prénom>" <member|admin> [memberId]'
+      'Usage : npm run accounts -- add <username> <password> "<Nom Prénom>" <member|admin>'
     );
     process.exit(1);
   }
@@ -69,7 +57,7 @@ async function cmdAdd(args: string[]) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  accounts.push({ username, passwordHash, name, role, memberId: memberId ?? null });
+  accounts.push({ username, passwordHash, name, role });
   saveAccounts(accounts);
   console.log(`✅ Compte "${username}" créé.`);
 }
@@ -107,33 +95,6 @@ async function cmdRemove(args: string[]) {
   console.log(`✅ Compte "${username}" supprimé.`);
 }
 
-async function cmdBulkFromMembers() {
-  const members = await getMembers();
-  const accounts = loadAccounts();
-  const existingMemberIds = new Set(accounts.map((a) => a.memberId));
-  const created: { username: string; password: string; name: string }[] = [];
-
-  for (const member of members) {
-    if (existingMemberIds.has(member.id)) continue;
-    const username = slugifyUsername(member.firstName, member.lastName);
-    const password = generatePassword();
-    const passwordHash = await bcrypt.hash(password, 10);
-    accounts.push({
-      username,
-      passwordHash,
-      name: `${member.firstName} ${member.lastName}`,
-      role: "member",
-      memberId: member.id,
-    });
-    created.push({ username, password, name: `${member.firstName} ${member.lastName}` });
-  }
-
-  saveAccounts(accounts);
-  console.log(`✅ ${created.length} comptes créés.`);
-  console.log("Transmettez ces identifiants aux adhérents concernés (à usage unique, non stockés en clair) :");
-  console.table(created);
-}
-
 async function main() {
   const [, , command, ...args] = process.argv;
 
@@ -146,21 +107,17 @@ async function main() {
       return cmdPasswd(args);
     case "remove":
       return cmdRemove(args);
-    case "bulk-from-members":
-      return cmdBulkFromMembers();
     default:
       console.log(
         [
           "Commandes disponibles :",
           "  list",
-          "  add <username> <password> \"<Nom Prénom>\" <member|admin> [memberId]",
+          "  add <username> <password> \"<Nom Prénom>\" <member|admin>",
           "  passwd <username> <nouveauMotDePasse>",
           "  remove <username>",
-          "  bulk-from-members",
         ].join("\n")
       );
   }
-  await closeDb();
 }
 
 main();

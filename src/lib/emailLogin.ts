@@ -221,7 +221,7 @@ export interface LoginSession {
 function toSession(row: ConnexionJetonRow): LoginSession {
   const role: SessionRole = row.role === "admin" ? "admin" : "member";
   return {
-    token: createSessionToken({ username: row.email, name: row.nom_affiche, role, memberId: null }),
+    token: createSessionToken({ username: row.email, name: row.nom_affiche, role }),
     role,
     name: row.nom_affiche,
     suivant: row.suivant,

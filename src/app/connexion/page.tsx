@@ -8,7 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 function ConnexionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/espace-adherents/dossier";
+  const next = searchParams.get("next") ?? "/espace-adherents";
   const { auth } = useAuth();
 
   if (auth.loggedIn) {

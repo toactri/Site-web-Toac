@@ -1,5 +1,4 @@
 import { Pool } from "pg";
-import type { Member, MemberDossier, MemberStatus } from "./types";
 
 /**
  * Base de données Postgres (Neon, Vercel Postgres, Supabase… n'importe quel
@@ -17,7 +16,7 @@ import type { Member, MemberDossier, MemberStatus } from "./types";
  *
  * Pas de garde `import "server-only"` ici (contrairement aux autres modules
  * de src/lib) : ce module est aussi importé directement par les scripts CLI
- * (scripts/import-members-csv.ts, scripts/manage-accounts.ts) exécutés avec
+ * (scripts/manage-accounts.ts) exécutés avec
  * `tsx`, hors du bundler Next — `server-only` y lève toujours une erreur. La
  * dépendance `pg` (Node uniquement) empêche de toute façon tout bundling
  * accidentel côté client.
@@ -303,79 +302,10 @@ function ensureSchema(): Promise<void> {
         CREATE INDEX IF NOT EXISTS connexion_jetons_email
           ON connexion_jetons (email, cree_le);
 
-        CREATE TABLE IF NOT EXISTS members (
-          id SERIAL PRIMARY KEY,
-          first_name TEXT NOT NULL,
-          last_name TEXT NOT NULL,
-          name_key TEXT,
-          email TEXT,
-          status TEXT NOT NULL DEFAULT 'new',
-          paiement BOOLEAN NOT NULL DEFAULT false,
-          formulaire_adhesion BOOLEAN NOT NULL DEFAULT false,
-          caution BOOLEAN NOT NULL DEFAULT false,
-          groupe_google BOOLEAN NOT NULL DEFAULT false,
-          whatsapp BOOLEAN NOT NULL DEFAULT false,
-          licence_demandee BOOLEAN NOT NULL DEFAULT false,
-          licence_payee BOOLEAN NOT NULL DEFAULT false,
-          justificatif BOOLEAN NOT NULL DEFAULT false,
-          justificatif_url TEXT,
-          cree_le TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
-
-        -- Migration idempotente pour les bases créées avant l'ajout de
-        -- name_key/caution/justificatif (voir historique du dépôt) : sans
-        -- effet si la table members a déjà le schéma ci-dessus.
+        -- Migration idempotente des colonnes ajoutées après coup à la table
+        -- historique inscriptions (ancien parcours Monetico).
         DO $$
         BEGIN
-          IF EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = 'members' AND column_name = 'cheque'
-          ) THEN
-            ALTER TABLE members RENAME COLUMN cheque TO caution;
-          END IF;
-
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = 'members' AND column_name = 'justificatif'
-          ) THEN
-            ALTER TABLE members ADD COLUMN justificatif BOOLEAN NOT NULL DEFAULT false;
-          END IF;
-
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = 'members' AND column_name = 'justificatif_url'
-          ) THEN
-            ALTER TABLE members ADD COLUMN justificatif_url TEXT;
-          END IF;
-
-          IF EXISTS (
-            SELECT 1 FROM information_schema.table_constraints
-            WHERE table_name = 'members' AND constraint_name = 'members_email_key'
-          ) THEN
-            ALTER TABLE members DROP CONSTRAINT members_email_key;
-          END IF;
-
-          ALTER TABLE members ALTER COLUMN email DROP NOT NULL;
-
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = 'members' AND column_name = 'name_key'
-          ) THEN
-            ALTER TABLE members ADD COLUMN name_key TEXT;
-          END IF;
-
-          UPDATE members
-          SET name_key = lower(regexp_replace(last_name, '[^a-zA-Z0-9]', '', 'g'))
-            || '|' || lower(regexp_replace(first_name, '[^a-zA-Z0-9]', '', 'g'))
-          WHERE name_key IS NULL;
-
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.table_constraints
-            WHERE table_name = 'members' AND constraint_name = 'members_name_key_key'
-          ) THEN
-            ALTER TABLE members ADD CONSTRAINT members_name_key_key UNIQUE (name_key);
-          END IF;
-
           IF NOT EXISTS (
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'inscriptions' AND column_name = 'member_id'
@@ -936,6 +866,22 @@ export interface AdherentSaisonInput {
   partClubCentimes: number | null;
 }
 
+/**
+ * Clé de rapprochement par nom (insensible à la casse, aux accents, aux
+ * espaces et aux tirets), commune aux adhérents importés, aux décharges
+ * musculation et aux validations du bureau.
+ */
+function nameKey(firstName: string, lastName: string): string {
+  const normalize = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]/g, "");
+  return `${normalize(lastName)}|${normalize(firstName)}`;
+}
+
 export interface AdherentSaisonRow {
   id: number;
   saison: string;
@@ -1324,12 +1270,8 @@ export interface NouvelleInscription {
 }
 
 /**
- * Enregistre la demande d'adhésion. Ne crée volontairement PAS de dossier
- * adhérent (table `members`) : tant que le paiement n'est pas confirmé par
- * Monetico, la personne n'est qu'une demande en attente, pas un adhérent
- * (voir markInscriptionPaid, appelé depuis /api/monetico/retour). Renvoie
- * l'identifiant de l'inscription, encodé dans la référence Monetico pour
- * pouvoir la retrouver au retour du paiement.
+ * Enregistre une demande d'adhésion de l'ancien parcours Monetico (retiré du
+ * site). Renvoie l'identifiant de l'inscription.
  */
 export async function insertInscription(inscription: NouvelleInscription): Promise<number> {
   await ensureSchema();
@@ -1380,250 +1322,6 @@ export async function getInscriptionById(id: number): Promise<InscriptionRow | n
   return rows[0] ?? null;
 }
 
-/**
- * Paiement Monetico confirmé pour cette demande : crée (ou retrouve, par
- * nom) le dossier adhérent maintenant — pas avant — et le marque payé.
- * C'est ce moment précis qui fait passer un simple candidat au statut
- * d'adhérent.
- */
-export async function markInscriptionPaid(inscriptionId: number): Promise<void> {
-  await ensureSchema();
-  const inscription = await getInscriptionById(inscriptionId);
-  if (!inscription) return;
-
-  const memberId = await upsertMemberFromInscription({
-    prenom: inscription.prenom,
-    nom: inscription.nom,
-    email: inscription.email,
-    justificatif: inscription.formule?.startsWith("reduit") ?? false,
-    justificatifUrl: inscription.justificatif_url,
-  });
-  await markMemberPaid(memberId);
-  await getPool().query(
-    "UPDATE inscriptions SET statut = 'validée', member_id = $2 WHERE id = $1",
-    [inscriptionId, memberId]
-  );
-}
-
-interface MemberRow {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  status: string;
-  paiement: boolean;
-  formulaire_adhesion: boolean;
-  caution: boolean;
-  groupe_google: boolean;
-  whatsapp: boolean;
-  licence_demandee: boolean;
-  licence_payee: boolean;
-  justificatif: boolean;
-  justificatif_url: string | null;
-}
-
-/**
- * Clé de rapprochement par nom (insensible à la casse et aux accents) :
- * l'export du club n'a pas de colonne email, et un même adhérent peut
- * remplir le formulaire en ligne avec une adresse différente d'une année
- * sur l'autre — le nom reste le repère stable entre l'import CSV et les
- * inscriptions en ligne.
- */
-function nameKey(firstName: string, lastName: string): string {
-  const normalize = (s: string) =>
-    s
-      .normalize("NFD")
-      .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]/g, "");
-  return `${normalize(lastName)}|${normalize(firstName)}`;
-}
-
-function toMember(row: MemberRow): Member {
-  return {
-    id: String(row.id),
-    firstName: row.first_name,
-    lastName: row.last_name,
-    email: row.email ?? "",
-    status: row.status as MemberStatus,
-    dossier: {
-      paiement: row.paiement,
-      formulaireAdhesion: row.formulaire_adhesion,
-      caution: row.caution,
-      groupeGoogle: row.groupe_google,
-      whatsapp: row.whatsapp,
-      licenceDemandee: row.licence_demandee,
-      licencePayee: row.licence_payee,
-      justificatif: row.justificatif,
-    },
-    justificatifUrl: row.justificatif_url,
-  };
-}
-
-/** Tous les dossiers adhérents (import CSV + inscriptions en ligne), pour la vue bureau. */
-export async function getMembers(): Promise<Member[]> {
-  await ensureSchema();
-  const { rows } = await getPool().query<MemberRow>(
-    "SELECT * FROM members ORDER BY last_name, first_name"
-  );
-  return rows.map(toMember);
-}
-
-export async function getMemberById(id: string): Promise<Member | null> {
-  await ensureSchema();
-  const numericId = Number(id);
-  if (!Number.isFinite(numericId)) return null;
-  const { rows } = await getPool().query<MemberRow>(
-    "SELECT * FROM members WHERE id = $1",
-    [numericId]
-  );
-  return rows[0] ? toMember(rows[0]) : null;
-}
-
-export interface CsvMemberInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: MemberStatus;
-  dossier: MemberDossier;
-}
-
-/** Insère ou met à jour (par nom) un adhérent importé depuis le CSV du club. */
-export async function upsertMemberFromCsv(m: CsvMemberInput): Promise<void> {
-  await ensureSchema();
-  await getPool().query(
-    `
-    INSERT INTO members (
-      first_name, last_name, name_key, email, status, paiement, formulaire_adhesion,
-      caution, groupe_google, whatsapp, licence_demandee, licence_payee, justificatif
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-    ON CONFLICT (name_key) DO UPDATE SET
-      first_name = EXCLUDED.first_name,
-      last_name = EXCLUDED.last_name,
-      email = COALESCE(NULLIF(EXCLUDED.email, ''), members.email),
-      status = EXCLUDED.status,
-      paiement = EXCLUDED.paiement,
-      formulaire_adhesion = EXCLUDED.formulaire_adhesion,
-      caution = EXCLUDED.caution,
-      groupe_google = EXCLUDED.groupe_google,
-      whatsapp = EXCLUDED.whatsapp,
-      licence_demandee = EXCLUDED.licence_demandee,
-      licence_payee = EXCLUDED.licence_payee,
-      justificatif = EXCLUDED.justificatif
-    `,
-    [
-      m.firstName,
-      m.lastName,
-      nameKey(m.firstName, m.lastName),
-      m.email || null,
-      m.status,
-      m.dossier.paiement,
-      m.dossier.formulaireAdhesion,
-      m.dossier.caution,
-      m.dossier.groupeGoogle,
-      m.dossier.whatsapp,
-      m.dossier.licenceDemandee,
-      m.dossier.licencePayee,
-      m.dossier.justificatif,
-    ]
-  );
-}
-
-/**
- * Crée (ou retrouve, par nom) le dossier adhérent. N'est appelée qu'une
- * fois le paiement confirmé (voir markInscriptionPaid) : un simple envoi du
- * formulaire d'adhésion, sans paiement, ne crée pas de dossier — la
- * personne n'apparaît que dans Bureau → Demandes d'adhésion tant qu'elle
- * n'a pas payé. Renvoie l'identifiant du dossier.
- */
-export async function upsertMemberFromInscription(inscription: {
-  prenom: string;
-  nom: string;
-  email: string;
-  justificatif: boolean;
-  justificatifUrl: string | null;
-}): Promise<number> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{ id: number }>(
-    `
-    INSERT INTO members (first_name, last_name, name_key, email, status, formulaire_adhesion, justificatif, justificatif_url)
-    VALUES ($1, $2, $3, $4, 'new', true, $5, $6)
-    ON CONFLICT (name_key) DO UPDATE SET
-      email = COALESCE(NULLIF(EXCLUDED.email, ''), members.email),
-      formulaire_adhesion = true,
-      justificatif = EXCLUDED.justificatif OR members.justificatif,
-      justificatif_url = COALESCE(EXCLUDED.justificatif_url, members.justificatif_url)
-    RETURNING id
-    `,
-    [
-      inscription.prenom,
-      inscription.nom,
-      nameKey(inscription.prenom, inscription.nom),
-      inscription.email || null,
-      inscription.justificatif,
-      inscription.justificatifUrl,
-    ]
-  );
-  return rows[0].id;
-}
-
-/** Marque le dossier payé + caution réglée suite à une notification Monetico acceptée. */
-export async function markMemberPaid(memberId: number): Promise<void> {
-  await ensureSchema();
-  await getPool().query(
-    "UPDATE members SET paiement = true, caution = true WHERE id = $1",
-    [memberId]
-  );
-}
-
-export interface MemberPatch {
-  status?: MemberStatus;
-  paiement?: boolean;
-  formulaireAdhesion?: boolean;
-  caution?: boolean;
-  groupeGoogle?: boolean;
-  whatsapp?: boolean;
-  licenceDemandee?: boolean;
-  licencePayee?: boolean;
-  justificatif?: boolean;
-}
-
-const PATCH_COLUMN: Record<keyof MemberPatch, string> = {
-  status: "status",
-  paiement: "paiement",
-  formulaireAdhesion: "formulaire_adhesion",
-  caution: "caution",
-  groupeGoogle: "groupe_google",
-  whatsapp: "whatsapp",
-  licenceDemandee: "licence_demandee",
-  licencePayee: "licence_payee",
-  justificatif: "justificatif",
-};
-
-/** Met à jour un ou plusieurs champs du dossier (coché depuis la vue bureau). */
-export async function updateMember(id: string, patch: MemberPatch): Promise<void> {
-  await ensureSchema();
-  const entries = (Object.entries(patch) as [keyof MemberPatch, MemberPatch[keyof MemberPatch]][]).filter(
-    ([, value]) => value !== undefined
-  );
-  if (entries.length === 0) return;
-
-  const setClauses = entries.map(([key], i) => `${PATCH_COLUMN[key]} = $${i + 2}`);
-  const values = entries.map(([, value]) => value);
-  await getPool().query(
-    `UPDATE members SET ${setClauses.join(", ")} WHERE id = $1`,
-    [Number(id), ...values]
-  );
-}
-
-/** Supprime un dossier adhérent (depuis la vue bureau). */
-export async function deleteMember(id: string): Promise<void> {
-  await ensureSchema();
-  await getPool().query("DELETE FROM members WHERE id = $1", [Number(id)]);
-}
-
-/** Ferme la connexion — à appeler en fin d'exécution des scripts CLI (import CSV…). */
 /** Adhérent de la saison dont l'email du dossier correspond (casse et espaces ignorés). */
 export async function findAdherentSaisonByEmail(saison: string, email: string): Promise<AdherentSaisonRow | null> {
   await ensureSchema();
@@ -1637,6 +1335,33 @@ export async function findAdherentSaisonByEmail(saison: string, email: string): 
     [saison, email]
   );
   return rows[0] ?? null;
+}
+
+/**
+ * Adhésion de la saison la plus récente rattachée à cet email (celui de la
+ * session), avec le statut « validé musculation » calculé comme dans la vue
+ * bureau. Null si l'email ne correspond à aucun adhérent de la saison.
+ */
+export async function getAdhesionByEmail(email: string): Promise<AdherentSaisonRow | null> {
+  const saison = await getLatestSaison();
+  if (!saison) return null;
+  const adherent = await findAdherentSaisonByEmail(saison, email);
+  if (!adherent) return null;
+  const [{ rows: bureau }, { rows: decharges }] = await Promise.all([
+    getPool().query(
+      "SELECT 1 FROM musculation_validations_bureau WHERE name_key = $1 AND date_naissance = $2",
+      [adherent.name_key, adherent.date_naissance]
+    ),
+    getPool().query<{ nom: string; prenom: string }>(
+      "SELECT nom, prenom FROM musculation_decharges WHERE statut = 'valide' AND date_naissance = $1",
+      [adherent.date_naissance]
+    ),
+  ]);
+  // Même rapprochement que getAdherentsSaison : nom et prénom dans les deux ordres.
+  const musculation =
+    bureau.length > 0 ||
+    decharges.some((d) => [nameKey(d.prenom, d.nom), nameKey(d.nom, d.prenom)].includes(adherent.name_key));
+  return { ...adherent, musculation };
 }
 
 export interface ConnexionJetonRow {
@@ -1736,6 +1461,7 @@ export async function markConnexionJetonUsed(id: number): Promise<boolean> {
   return (rowCount ?? 0) > 0;
 }
 
+/** Ferme la connexion — à appeler en fin d'exécution des scripts CLI. */
 export async function closeDb(): Promise<void> {
   if (pool) await pool.end();
 }

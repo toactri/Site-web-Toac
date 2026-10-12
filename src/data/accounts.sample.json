@@ -3,14 +3,12 @@
     "username": "demo",
     "passwordHash": "$2b$10$nNX/LgaDm1NmqCTAbyFbJ.g13/8saxgp5c/SNCeIrLtOlX.zBOlIS",
     "name": "Adhérent Démo",
-    "role": "member",
-    "memberId": "m-001"
+    "role": "member"
   },
   {
     "username": "bureau",
     "passwordHash": "$2b$10$CSaWEGBQ6ZMrjV2sbQ1R7uATNLiwfll3psFFfDcDn4yrxzq/Yf1YK",
     "name": "Bureau TOAC",
-    "role": "admin",
-    "memberId": null
+    "role": "admin"
   }
 ]

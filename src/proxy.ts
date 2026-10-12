@@ -72,7 +72,7 @@ export function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/espace-adherents/bureau") &&
     session.role !== "admin"
   ) {
-    return NextResponse.redirect(new URL("/espace-adherents/dossier", request.url));
+    return NextResponse.redirect(new URL("/espace-adherents", request.url));
   }
 
   return NextResponse.next();

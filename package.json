@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "import-csv": "tsx scripts/import-members-csv.ts",
     "accounts": "tsx scripts/manage-accounts.ts"
   },
   "dependencies": {

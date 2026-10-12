@@ -20,7 +20,6 @@ export interface SessionPayload {
   username: string;
   name: string;
   role: SessionRole;
-  memberId: string | null;
   exp: number;
 }
 

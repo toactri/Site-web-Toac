@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 export default async function BureauAttestationsPage() {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau/attestations");
-  if (session.role !== "admin") redirect("/espace-adherents/dossier");
+  if (session.role !== "admin") redirect("/espace-adherents");
 
   let attestations: AttestationRow[] = [];
   let stats: Awaited<ReturnType<typeof getAdherentsSaisonStats>> = [];

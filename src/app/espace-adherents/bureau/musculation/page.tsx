@@ -27,7 +27,7 @@ export default async function BureauMusculationPage({
 }) {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau/musculation");
-  if (session.role !== "admin") redirect("/espace-adherents/dossier");
+  if (session.role !== "admin") redirect("/espace-adherents");
 
   const { saison: saisonDemandee } = await searchParams;
 

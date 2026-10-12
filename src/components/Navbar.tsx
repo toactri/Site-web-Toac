@@ -124,7 +124,9 @@ export default function Navbar({ items }: { items?: NavItem[] | null }) {
 
         {auth.loggedIn && (
           <div className="hidden shrink-0 items-center gap-3 whitespace-nowrap text-sm xl:flex">
-            <span className="text-toac-blue-950">Bonjour {auth.name}</span>
+            <Link href="/espace-adherents" className="font-medium text-toac-blue-950 hover:text-toac-blue-600">
+              Mon espace
+            </Link>
             <button
               type="button"
               onClick={() => logout()}
@@ -180,7 +182,14 @@ export default function Navbar({ items }: { items?: NavItem[] | null }) {
               </div>
             ))}
             {auth.loggedIn && (
-              <div className="pt-3">
+              <div className="space-y-2 pt-3">
+                <Link
+                  href="/espace-adherents"
+                  onClick={() => setMobileOpen(false)}
+                  className="block w-full rounded-md bg-toac-pink-500 px-4 py-2 text-center text-sm font-medium text-white"
+                >
+                  Mon espace
+                </Link>
                 <button
                   type="button"
                   onClick={() => logout()}

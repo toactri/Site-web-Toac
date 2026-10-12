@@ -21,7 +21,7 @@ export default async function BureauDiagnosticPage({
 }) {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau/diagnostic");
-  if (session.role !== "admin") redirect("/espace-adherents/dossier");
+  if (session.role !== "admin") redirect("/espace-adherents");
 
   const { test } = await searchParams;
   const blobTest = test === "blob" ? await runBlobTest() : null;

@@ -31,7 +31,7 @@ function LienContent() {
         return;
       }
       // Rechargement complet : la barre de navigation relit l'état de connexion.
-      window.location.assign(typeof data.next === "string" ? data.next : "/espace-adherents/dossier");
+      window.location.assign(typeof data.next === "string" ? data.next : "/espace-adherents");
     } catch {
       setError("Erreur réseau. Réessayez.");
     } finally {

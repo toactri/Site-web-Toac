@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default async function BureauDossiersPage() {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau");
-  if (session.role !== "admin") redirect("/espace-adherents/dossier");
+  if (session.role !== "admin") redirect("/espace-adherents");
 
   let saison: string | null = null;
   let adherents: AdherentSaisonRow[] = [];

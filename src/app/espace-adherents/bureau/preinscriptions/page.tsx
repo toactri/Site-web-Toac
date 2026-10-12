@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function BureauPreinscriptionsPage() {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau/preinscriptions");
-  if (session.role !== "admin") redirect("/espace-adherents/dossier");
+  if (session.role !== "admin") redirect("/espace-adherents");
 
   let preinscriptions: PreinscriptionRow[];
   let dbError = false;
