@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { getAdhesionByEmail } from "@/lib/db";
+import { DOSSIER_DRIVE_ID, RUBRIQUES } from "@/lib/comptesRendus";
+import CompteRenduUploadForm from "@/components/CompteRenduUploadForm";
 
 export const metadata: Metadata = {
   title: "Comptes rendus de course",
@@ -11,22 +14,16 @@ export const metadata: Metadata = {
 // renvoyer vers chaque sous-dossier, un CR ajouté au Drive est donc visible
 // sans toucher au site. Réservé aux adhérents : ce sont des récits personnels.
 
-const DOSSIER_DRIVE = "https://drive.google.com/drive/folders/1dOpD_dMQ8Th-eDHKImZizeLdHg2_UyV9";
-
-const RUBRIQUES = [
-  { titre: "Ironman", detail: "Hawaï, Tours…", id: "1FTOuEh7bGVUxyMTCvj8XJLnTmqBAUzJB" },
-  { titre: "Embrunman", detail: "Le mythe haut-alpin.", id: "1B96bKMK0Z_ozSryVelFjOCemnNXWmm9v" },
-  { titre: "Altriman", detail: "Half et Olympic.", id: "1W_XnJqoCv7ibJOuGw7qauDjyGNiKvyhf" },
-  { titre: "Saison triathlon", detail: "Bilans de toute une saison.", id: "1cNo-onJ19tPKIdzLHQKlXTTuRaeg63fB" },
-  { titre: "Duathlons", detail: "", id: "1MqEt2dnKQ6ZwJnztfhkH-xD-EXrJqxVY" },
-  { titre: "Marathons", detail: "Paris, Séville…", id: "1bnt9uZ7W8h6bcBS087AAp-DI4Zqu7Q8B" },
-  { titre: "Trails", detail: "", id: "1KliKRNCH3jAOmKxjeXePxP3OKg7g2Mx7" },
-  { titre: "Autres", detail: "XTri, paratriathlon, gazettes…", id: "1UxNcSsO9Kk3qic5lZ6-lCdr-rXMJDqMc" },
-];
+const DOSSIER_DRIVE = `https://drive.google.com/drive/folders/${DOSSIER_DRIVE_ID}`;
 
 export default async function ComptesRendusPage() {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/comptes-rendus");
+
+  // Le prénom pré-rempli vient de la fiche adhérent ; à défaut, du nom de session.
+  const adhesion = await getAdhesionByEmail(session.username).catch(() => null);
+  const prenom = adhesion?.prenom ?? session.name.split(" ")[0] ?? "";
+  const envoiConfigure = Boolean(process.env.CR_DRIVE_UPLOAD_URL && process.env.CR_DRIVE_UPLOAD_SECRET);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
@@ -60,16 +57,20 @@ export default async function ComptesRendusPage() {
         </a>
       </p>
 
-      <div className="mt-10 rounded-md border border-toac-gray-200 bg-white p-4 text-sm text-toac-blue-900/80 shadow-sm">
-        <p className="font-medium text-toac-blue-950">Vous avez écrit le récit de votre course ?</p>
-        <p className="mt-1">
-          Envoyez-le en PDF au bureau,{" "}
-          <a href="mailto:contact@toac-triathlon.com" className="underline">
-            contact@toac-triathlon.com
-          </a>
-          , nommé « année-course-prénom » (ex. : 26-IM-Tours-Rémi.pdf).
-        </p>
-      </div>
+      <section className="mt-10 rounded-md border border-toac-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="font-display text-lg uppercase text-toac-blue-950">Partager mon compte rendu</h2>
+        {envoiConfigure ? (
+          <CompteRenduUploadForm prenomParDefaut={prenom} />
+        ) : (
+          <p className="mt-2 text-sm text-toac-blue-900/80">
+            Envoyez-le en PDF au bureau,{" "}
+            <a href="mailto:contact@toac-triathlon.com" className="underline">
+              contact@toac-triathlon.com
+            </a>
+            , nommé « année-course-prénom » (ex. : 26-IM-Tours-Rémi.pdf).
+          </p>
+        )}
+      </section>
     </div>
   );
 }
