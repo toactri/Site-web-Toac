@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { isSuperAdmin } from "@/lib/superAdmin";
 import {
   getAttestations,
   getAdherentsSaisonStats,
@@ -10,10 +9,7 @@ import {
   type AttestationRow,
 } from "@/lib/db";
 import { getAttestationSettings, type AttestationSettings } from "@/lib/attestation";
-import { currentSaison } from "@/lib/adherentsImport";
-import { documentHref } from "@/lib/documentUrl";
 import AdminAttestationsTable from "@/components/AdminAttestationsTable";
-import { AttestationsImportForm, AttestationsSettingsForm } from "@/components/AdminAttestationsSetup";
 import DbSetupNotice from "@/components/DbSetupNotice";
 
 export const metadata: Metadata = {
@@ -43,11 +39,8 @@ export default async function BureauAttestationsPage() {
     dbError = true;
   }
 
-  // Import de la liste et signature : réservés aux super-administrateurs. Les
-  // autres membres du bureau ne voient que la liste des attestations envoyées.
-  const superAdmin = isSuperAdmin(session);
+  // La liste des adhérents et le signataire se règlent dans Bureau → Imports.
   const ouvert = stats.length > 0 && Boolean(settings.tresorierNom && settings.signaturePath);
-  const cardClass = "rounded-lg border border-toac-gray-200 bg-white p-5 shadow-sm";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
@@ -65,43 +58,21 @@ export default async function BureauAttestationsPage() {
             Service fermé tant que la liste n&apos;est pas importée et que le trésorier et sa signature ne sont pas
             renseignés.
           </strong>
-        )}
+        )}{" "}
+        {stats[0] ? (
+          <>
+            Liste des adhérents {stats[0].saison} : {stats[0].payes} dossiers payés, importée le{" "}
+            {new Date(stats[0].importe_le).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })} —{" "}
+          </>
+        ) : null}
+        <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>.
       </p>
 
       {dbError ? (
         <div className="mt-8"><DbSetupNotice /></div>
       ) : (
         <>
-          {superAdmin && (
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
-              <section className={cardClass}>
-                <h2 className="mb-3 font-display text-lg uppercase text-toac-blue-950">Liste des adhérents</h2>
-                {stats.length > 0 ? (
-                  <ul className="mb-4 text-sm text-toac-blue-900/80">
-                    {stats.map((s) => (
-                      <li key={s.saison}>
-                        Saison {s.saison} : <strong>{s.total}</strong> dossiers dont <strong>{s.payes}</strong> payés
-                        (importés le{" "}
-                        {new Date(s.importe_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })})
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mb-4 text-sm text-amber-800">Aucune liste importée.</p>
-                )}
-                <AttestationsImportForm defaultSaison={stats[0]?.saison ?? currentSaison()} />
-              </section>
-              <section className={cardClass}>
-                <h2 className="mb-3 font-display text-lg uppercase text-toac-blue-950">Signataire</h2>
-                <AttestationsSettingsForm
-                  tresorierNom={settings.tresorierNom}
-                  signatureHref={settings.signaturePath ? documentHref(settings.signaturePath) : null}
-                />
-              </section>
-            </div>
-          )}
-
-          <h2 className="mt-10 mb-4 font-display text-lg uppercase text-toac-blue-950">
+          <h2 className="mt-8 mb-4 font-display text-lg uppercase text-toac-blue-950">
             Attestations envoyées ({attestations.length})
           </h2>
           <AdminAttestationsTable attestations={attestations} />

@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { isSuperAdmin } from "@/lib/superAdmin";
 import {
   getCoupsDeMainSaison,
   getLatestSaison,
   DatabaseNotConfiguredError,
   type CoupDeMainAdherentRow,
 } from "@/lib/db";
-import { currentSaison } from "@/lib/adherentsImport";
 import { coupsDeMainStats, type Correlation, type Repartition } from "@/lib/coupsDeMain";
 import CoupsDeMainTable from "@/components/CoupsDeMainTable";
-import CoupsDeMainImportForm from "@/components/CoupsDeMainImportForm";
 import DbSetupNotice from "@/components/DbSetupNotice";
 
 export const metadata: Metadata = {
@@ -93,7 +91,6 @@ export default async function BureauCoupsDeMainPage() {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau/coups-de-main");
   if (session.role !== "admin") redirect("/espace-adherents");
-  const superAdmin = isSuperAdmin(session);
 
   let saison: string | null = null;
   let adherents: CoupDeMainAdherentRow[] = [];
@@ -115,8 +112,9 @@ export default async function BureauCoupsDeMainPage() {
         Réponses à la question « Je souhaite donner un coup de main sur : » du formulaire d&apos;adhésion
         {saison ? ` (saison ${saison})` : ""}, pour solliciter les adhérents motivés par chaque action.
         {importeLe
-          ? ` Dernier import le ${new Date(importeLe).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}.`
-          : ""}
+          ? ` Dernier import le ${new Date(importeLe).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })} `
+          : " "}
+        (<Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>).
       </p>
 
       {dbError ? (
@@ -125,8 +123,8 @@ export default async function BureauCoupsDeMainPage() {
         </div>
       ) : stats.repondants === 0 ? (
         <p className="mt-8 rounded-md border border-toac-gray-200 bg-toac-gray-50 p-4 text-sm text-toac-blue-900/70">
-          Aucune réponse importée pour l&apos;instant
-          {superAdmin ? " : importez l'onglet « Réponses » ci-dessous." : " : le super-administrateur doit importer l'onglet « Réponses »."}
+          Aucune réponse importée pour l&apos;instant : importez l&apos;onglet « Réponses » du Google Sheets depuis{" "}
+          <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>.
         </p>
       ) : (
         <>
@@ -183,12 +181,6 @@ export default async function BureauCoupsDeMainPage() {
         </>
       )}
 
-      {superAdmin && !dbError && (
-        <section className={`${cardClass} mt-10`}>
-          <h2 className="mb-3 font-display text-lg uppercase text-toac-blue-950">Importer les réponses</h2>
-          <CoupsDeMainImportForm defaultSaison={saison ?? currentSaison()} />
-        </section>
-      )}
     </div>
   );
 }

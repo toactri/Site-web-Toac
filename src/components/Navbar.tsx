@@ -36,6 +36,7 @@ const BUREAU_ITEM: NavItem = {
     { label: "Attestations de paiement", href: "/espace-adherents/bureau/attestations" },
     { label: "Accès espace adhérents", href: "/espace-adherents/bureau/acces" },
     { label: "Coups de main", href: "/espace-adherents/bureau/coups-de-main" },
+    { label: "Imports", href: "/espace-adherents/bureau/imports" },
     { label: "Diagnostic serveur", href: "/espace-adherents/bureau/diagnostic" },
   ],
 };

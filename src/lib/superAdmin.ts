@@ -3,9 +3,10 @@ import type { SessionPayload } from "@/lib/session";
 
 /**
  * Super-administrateurs : les adresses de SUPER_ADMIN_EMAILS (séparées par des
- * virgules). Eux seuls peuvent importer la liste des adhérents de la saison et
- * modifier le trésorier signataire et sa signature (Bureau → Attestations) —
- * les autres membres du bureau voient la page sans ces deux blocs.
+ * virgules). Eux seuls peuvent importer les fichiers du Google Sheets (Bureau →
+ * Imports : liste des adhérents, réponses « coups de main ») et modifier le
+ * trésorier signataire et sa signature (Bureau → Attestations) — les autres
+ * membres du bureau voient ces pages sans les formulaires.
  *
  * Une adresse listée ici obtient aussi le rôle bureau à la connexion par email,
  * même si elle ne figure pas dans ADMIN_EMAILS. Sans la variable, personne n'a

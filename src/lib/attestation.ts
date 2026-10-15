@@ -65,7 +65,7 @@ export async function generateAttestation(
   const settings = await getAttestationSettings();
   if (!settings.tresorierNom || !settings.signaturePath) {
     throw new AttestationNotConfiguredError(
-      "Nom du trésorier ou signature non renseigné(e) dans Bureau → Attestations."
+      "Nom du trésorier ou signature non renseigné(e) dans Bureau → Imports."
     );
   }
   const signature = await readBlobBytes(settings.signaturePath);

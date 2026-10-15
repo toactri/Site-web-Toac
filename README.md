@@ -57,7 +57,7 @@ Aucune donnée adhérent n'est stockée dans le dépôt : elles vivent dans la b
 ## 4. Adhérents et connexion à l'espace adhérents
 
 Les adhérents de la saison vivent dans la table `adherents_saison`, alimentée par l'import de l'onglet
-« Dossiers adhésion » du Google Sheets dans **Espace Adhérents → Bureau → Attestations** (un import
+« Dossiers adhésion » du Google Sheets dans **Espace Adhérents → Bureau → Imports** (un import
 remplace toute la saison). Cette table sert à la fois à la vue bureau (liste et indicateurs), aux
 attestations de paiement, au suivi musculation et à la page **Suivi de mon dossier** de chaque adhérent.
 
@@ -72,9 +72,9 @@ Les adresses listées dans `ADMIN_EMAILS` (séparées par des virgules) se conne
 rôle bureau. Le compte `ADMIN_USERNAME` / `ADMIN_PASSWORD` reste disponible en secours (lien « Accès bureau
 par identifiant » de la page de connexion).
 
-Les adresses de `SUPER_ADMIN_EMAILS` ont en plus accès aux deux réglages sensibles de **Bureau → Attestations
-de paiement** : l'import de la liste des adhérents et le trésorier signataire avec sa signature. Les autres
-membres du bureau voient la page sans ces deux blocs, et les routes correspondantes (ainsi que l'image de
+Les adresses de `SUPER_ADMIN_EMAILS` ont en plus accès aux réglages sensibles de **Bureau → Imports** :
+l'import de la liste des adhérents, l'import des réponses « coups de main » et le trésorier signataire avec sa
+signature. Les autres membres du bureau voient la page sans les formulaires, et les routes correspondantes (ainsi que l'image de
 signature) leur répondent « accès refusé ». Une adresse super-administrateur a aussi le rôle bureau, même
 absente de `ADMIN_EMAILS` ; le compte `ADMIN_USERNAME` n'est jamais super-administrateur.
 
@@ -252,7 +252,7 @@ Montants repris de l'onglet « Dossiers adhésion » du Google Sheets : **cotisa
 
 ### Mise en route (une fois par saison)
 
-Tout se fait depuis **Bureau → Attestations de paiement**, connecté avec une adresse de `SUPER_ADMIN_EMAILS` (§ 4) ; le service reste fermé tant que les deux étapes
+Tout se fait depuis **Bureau → Imports**, connecté avec une adresse de `SUPER_ADMIN_EMAILS` (§ 4) ; le service reste fermé tant que les deux étapes
 ne sont pas faites.
 
 1. **Signataire** : nom du trésorier + image de sa signature (PNG/JPG). L'image est rangée dans le store Blob

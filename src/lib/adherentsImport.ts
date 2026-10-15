@@ -3,7 +3,7 @@ import type { AdherentSaisonInput } from "@/lib/db";
 /**
  * Lecture de l'export CSV de l'onglet « Dossiers (tri/nom) » (ou « Dossiers
  * adhésion ») du Google Sheets d'adhésion (Fichier → Télécharger → CSV, onglet ouvert). Utilisé par l'import
- * de la vue bureau (Bureau → Attestations).
+ * de la vue bureau (Bureau → Imports).
  *
  * Les colonnes sont retrouvées par leur en-tête, pas par leur position : une
  * colonne ajoutée ou déplacée dans le Sheets ne casse pas l'import.

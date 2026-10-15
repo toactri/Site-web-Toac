@@ -54,7 +54,7 @@ function TableKpi({ titre, lignes }: { titre: string; lignes: KpiLigne[] }) {
 
 /**
  * Indicateurs de l'onglet « Tableau de bord » du Google Sheets d'adhésion,
- * recalculés à partir de la liste importée (Bureau → Attestations).
+ * recalculés à partir de la liste importée (Bureau → Imports).
  */
 export default function AdherentsDashboard({ adherents }: { adherents: AdherentSaisonRow[] }) {
   const payes = adherents.filter(isPaye);

@@ -55,8 +55,8 @@ export default function CoupsDeMainImportForm({ defaultSaison }: { defaultSaison
         <li>Dans le Google Sheets d&apos;adhésion, ouvrez l&apos;onglet « Réponses ».</li>
         <li>Fichier → Télécharger → Valeurs séparées par des virgules (.csv).</li>
         <li>
-          Déposez le fichier ci-dessous. Seules les réponses des adhérents de la saison (liste importée dans
-          Attestations de paiement) sont gardées ; l&apos;import remplace celles de la saison choisie.
+          Déposez le fichier ci-dessous. Seules les réponses des adhérents de la saison au dossier payé (liste
+          importée ci-dessus) sont gardées ; l&apos;import remplace celles de la saison choisie.
         </li>
       </ol>
       <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">

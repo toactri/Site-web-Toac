@@ -19,7 +19,7 @@ import { superAdminEmails } from "@/lib/superAdmin";
  * Connexion à l'espace adhérents par email, sans mot de passe.
  *
  * L'adhérent saisit l'email de son adhésion (celui du dossier importé dans
- * Bureau → Attestations, saison la plus récente). S'il est connu, il reçoit un
+ * Bureau → Imports, saison la plus récente). S'il est connu, il reçoit un
  * email contenant un lien de connexion et un code à 6 chiffres, valables
  * quelques minutes et utilisables une seule fois. Aucun compte n'est à créer :
  * l'adhésion de la saison fait office de compte, et un adhérent qui ne

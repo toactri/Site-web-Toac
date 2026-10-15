@@ -13,7 +13,7 @@ import { checkFormSubmission } from "@/lib/formGuard";
 
 /**
  * Demande d'attestation de paiement par un adhérent (page /attestation-adhesion).
- * Vérifie l'adhésion dans la saison importée (Bureau → Attestations), génère le
+ * Vérifie l'adhésion dans la saison importée (Bureau → Imports), génère le
  * PDF et l'envoie à l'email du dossier — jamais à une adresse saisie ici.
  */
 export const maxDuration = 60;

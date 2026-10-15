@@ -6,7 +6,7 @@ import type { AdherentMusculation } from "@/lib/db";
 import { ExpirationDecharge } from "@/components/AdminMusculationTable";
 
 /**
- * Liste des adhérents d'une saison (importés via Bureau → Attestations) avec
+ * Liste des adhérents d'une saison (importés via Bureau → Imports) avec
  * une case « validé musculation » : pour ceux dont la décharge et le
  * certificat médical ont été transmis sur une saison précédente (valables
  * 3 ans), sans leur faire refaire le formulaire en ligne. L'année de la
@@ -74,7 +74,7 @@ export default function MusculationValidationChecklist({
 
         {saisons.length === 0 ? (
           <p className="text-sm text-amber-800">
-            Aucun adhérent importé : importez d&apos;abord la liste de la saison dans Bureau → Attestations.
+            Aucun adhérent importé : importez d&apos;abord la liste de la saison dans Bureau → Imports.
           </p>
         ) : (
           <>

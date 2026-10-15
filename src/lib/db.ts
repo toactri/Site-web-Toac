@@ -186,7 +186,7 @@ function ensureSchema(): Promise<void> {
         );
 
         -- Adhérents d'une saison, importés depuis l'onglet « Dossiers
-        -- adhésion » du Google Sheets (Bureau → Attestations). Sert à vérifier
+        -- adhésion » du Google Sheets (Bureau → Imports). Sert à vérifier
         -- l'adhésion et à reprendre les montants payés sur l'attestation. Un
         -- import remplace toutes les lignes de sa saison.
         CREATE TABLE IF NOT EXISTS adherents_saison (
@@ -1420,6 +1420,25 @@ export async function replaceCoupsDeMain(
     client.release();
   }
   return { importees: retenues.size, nonRetrouvees };
+}
+
+/** Réponses « coups de main » importées, par saison (page Bureau → Imports). */
+export async function getCoupsDeMainStats(): Promise<
+  { saison: string; total: number; motives: number; importe_le: string }[]
+> {
+  await ensureSchema();
+  const { rows } = await getPool().query(
+    `
+    SELECT saison,
+           count(*)::int AS total,
+           count(*) FILTER (WHERE cardinality(actions) > 0)::int AS motives,
+           max(importe_le) AS importe_le
+    FROM coups_de_main
+    GROUP BY saison
+    ORDER BY saison DESC
+    `
+  );
+  return rows;
 }
 
 export interface CoupDeMainAdherentRow {

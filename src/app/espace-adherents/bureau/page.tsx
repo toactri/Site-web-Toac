@@ -102,7 +102,7 @@ export default async function BureauDossiersPage() {
             as="p"
             value={
               introBlock.body ||
-              "Adhérents de la saison et indicateurs du tableau de bord, d'après la dernière liste importée depuis le Google Sheets d'adhésion (Bureau → Attestations de paiement)."
+              "Adhérents de la saison et indicateurs du tableau de bord, d'après la dernière liste importée depuis le Google Sheets d'adhésion (Bureau → Imports)."
             }
             target={{ kind: "block", id: introBlock.id, field: "body" }}
             multiline
@@ -116,7 +116,7 @@ export default async function BureauDossiersPage() {
           </h1>
           <p className="mt-4 text-toac-blue-900/80">
             Adhérents de la saison et indicateurs du tableau de bord, d&apos;après la dernière liste importée
-            depuis le Google Sheets d&apos;adhésion (Bureau → Attestations de paiement).
+            depuis le Google Sheets d&apos;adhésion (Bureau → Imports).
           </p>
         </>
       )}
@@ -165,7 +165,7 @@ export default async function BureauDossiersPage() {
         <p className="mt-8 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           Aucune liste d&apos;adhérents importée. Importez l&apos;onglet « Dossiers (tri/nom) » du Google Sheets
           depuis{" "}
-          <Link href="/espace-adherents/bureau/attestations" className="underline">Attestations de paiement</Link>.
+          <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>.
         </p>
       ) : (
         <>
@@ -175,13 +175,13 @@ export default async function BureauDossiersPage() {
               Données du Google Sheets importées le{" "}
               {new Date(importeLe).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}
               {" "}— pour actualiser, réimportez la liste depuis{" "}
-              <Link href="/espace-adherents/bureau/attestations" className="underline">Attestations de paiement</Link>.
+              <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>.
             </p>
           ) : null}
           {aReimporter ? (
             <p className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
               La liste actuelle a été importée avant l&apos;ajout des indicateurs : réimportez-la une fois depuis{" "}
-              <Link href="/espace-adherents/bureau/attestations" className="underline">Attestations de paiement</Link>{" "}
+              <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>{" "}
               pour remplir le profil, le bénévolat TDL, le tarif et les montants.
             </p>
           ) : null}
