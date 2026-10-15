@@ -1107,8 +1107,14 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
     SELECT 'acces', count(*)::int, 0 FROM acces_espace
     UNION ALL
     -- Adhérents prêts à donner un coup de main, saison la plus récente.
-    SELECT 'coupsDeMain', count(*) FILTER (WHERE cardinality(actions) > 0)::int, 0
-    FROM coups_de_main WHERE saison = (SELECT max(saison) FROM adherents_saison)
+    SELECT 'coupsDeMain', count(*) FILTER (WHERE cardinality(c.actions) > 0)::int, 0
+    FROM coups_de_main c
+    WHERE c.saison = (SELECT max(saison) FROM adherents_saison)
+      AND EXISTS (
+        SELECT 1 FROM adherents_saison a
+        WHERE a.saison = c.saison AND a.name_key = c.name_key AND a.date_naissance = c.date_naissance
+          AND lower(btrim(a.statut_dossier)) IN ('payé', 'paye')
+      )
     `
   );
   const compteurs: BureauCompteurs = {
@@ -1359,9 +1365,10 @@ export interface CoupDeMainReponse {
 
 /**
  * Remplace les coups de main de la saison par les réponses importées. Chaque
- * réponse est rattachée à un adhérent de la saison par nom, prénom (dans les
- * deux ordres) et date de naissance ; les autres (adhésion non finalisée,
- * orthographe différente…) sont écartées et renvoyées pour le compte rendu.
+ * réponse est rattachée à un adhérent de la saison dont le dossier est payé,
+ * par nom, prénom (dans les deux ordres) et date de naissance ; les autres
+ * (non-adhérents, dossier non réglé, orthographe différente…) sont écartées
+ * et renvoyées pour le compte rendu.
  */
 export async function replaceCoupsDeMain(
   saison: string,
@@ -1369,7 +1376,8 @@ export async function replaceCoupsDeMain(
 ): Promise<{ importees: number; nonRetrouvees: string[] }> {
   await ensureSchema();
   const { rows: adherents } = await getPool().query<{ name_key: string; date_naissance: string }>(
-    "SELECT name_key, date_naissance FROM adherents_saison WHERE saison = $1",
+    `SELECT name_key, date_naissance FROM adherents_saison
+     WHERE saison = $1 AND lower(btrim(statut_dossier)) IN ('payé', 'paye')`,
     [saison]
   );
   const connus = new Set(adherents.map((a) => `${a.name_key}|${a.date_naissance}`));
@@ -1427,7 +1435,7 @@ export interface CoupDeMainAdherentRow {
   importe_le: string | null;
 }
 
-/** Adhérents de la saison avec leurs coups de main (null si aucune réponse rattachée). */
+/** Adhérents de la saison au dossier payé, avec leurs coups de main (null si aucune réponse rattachée). */
 export async function getCoupsDeMainSaison(saison: string): Promise<CoupDeMainAdherentRow[]> {
   await ensureSchema();
   const { rows } = await getPool().query<CoupDeMainAdherentRow>(
@@ -1437,7 +1445,7 @@ export async function getCoupsDeMainSaison(saison: string): Promise<CoupDeMainAd
     FROM adherents_saison a
     LEFT JOIN coups_de_main c
       ON c.saison = a.saison AND c.name_key = a.name_key AND c.date_naissance = a.date_naissance
-    WHERE a.saison = $1
+    WHERE a.saison = $1 AND lower(btrim(a.statut_dossier)) IN ('payé', 'paye')
     ORDER BY lower(a.nom), lower(a.prenom)
     `,
     [saison]
