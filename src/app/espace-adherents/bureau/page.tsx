@@ -75,6 +75,14 @@ export default async function BureauDossiersPage() {
       enAttente: 0,
       libelleEnAttente: "",
     },
+    {
+      href: "/espace-adherents/bureau/coups-de-main",
+      titre: "Coups de main",
+      valides: compteurs?.coupsDeMain.valides,
+      libelleValides: "adhérents motivés",
+      enAttente: 0,
+      libelleEnAttente: "",
+    },
   ];
 
   const introBlocks = await getCmsPageBlocks("espace-bureau");
@@ -117,7 +125,7 @@ export default async function BureauDossiersPage() {
           les adhésions de la saison sont suivies hors du site (Google Form +
           paiement sur l'espace FFTRI). Le paiement en ligne Monetico a été
           retiré du code en octobre 2026 (voir l'historique git). */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tuiles.map((t) => (
           <Link
             key={t.href}

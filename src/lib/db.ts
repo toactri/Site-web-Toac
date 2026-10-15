@@ -280,6 +280,21 @@ function ensureSchema(): Promise<void> {
         CREATE INDEX IF NOT EXISTS connexion_jetons_email
           ON connexion_jetons (email, cree_le);
 
+        -- Coups de main proposés par les adhérents (question « Je souhaite
+        -- donner un coup de main sur : » du formulaire d'adhésion, onglet
+        -- « Réponses » du Google Sheets). Seules les réponses rattachées à un
+        -- adhérent de la saison sont gardées, avec les actions cochées (hors
+        -- « Je préfère profiter des entraînements ») : un tableau vide = pas
+        -- de coup de main. Un import remplace toute la saison.
+        CREATE TABLE IF NOT EXISTS coups_de_main (
+          saison TEXT NOT NULL,
+          name_key TEXT NOT NULL,
+          date_naissance TEXT NOT NULL,
+          actions TEXT[] NOT NULL DEFAULT '{}',
+          importe_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (saison, name_key, date_naissance)
+        );
+
         -- Fréquentation de l'espace adhérents, pour la vue bureau : une ligne
         -- par email connecté. Mise à jour à chaque connexion (lien ou code)
         -- et au plus une fois par heure lors d'une visite de l'espace.
@@ -1058,6 +1073,7 @@ export interface BureauCompteurs {
   musculation: { valides: number; aTraiter: number };
   attestations: { valides: number; aTraiter: number };
   acces: { valides: number; aTraiter: number };
+  coupsDeMain: { valides: number; aTraiter: number };
 }
 
 /**
@@ -1089,6 +1105,10 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
     FROM attestations
     UNION ALL
     SELECT 'acces', count(*)::int, 0 FROM acces_espace
+    UNION ALL
+    -- Adhérents prêts à donner un coup de main, saison la plus récente.
+    SELECT 'coupsDeMain', count(*) FILTER (WHERE cardinality(actions) > 0)::int, 0
+    FROM coups_de_main WHERE saison = (SELECT max(saison) FROM adherents_saison)
     `
   );
   const compteurs: BureauCompteurs = {
@@ -1096,6 +1116,7 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
     musculation: { valides: 0, aTraiter: 0 },
     attestations: { valides: 0, aTraiter: 0 },
     acces: { valides: 0, aTraiter: 0 },
+    coupsDeMain: { valides: 0, aTraiter: 0 },
   };
   for (const r of rows) compteurs[r.fonction] = { valides: r.valides, aTraiter: r.a_traiter };
   return compteurs;
@@ -1325,6 +1346,101 @@ export async function getAccesEspace(): Promise<AccesEspaceRow[]> {
     ) a ON true
     ORDER BY e.dernier_acces DESC
     `
+  );
+  return rows;
+}
+
+export interface CoupDeMainReponse {
+  nom: string;
+  prenom: string;
+  dateNaissance: string;
+  actions: string[];
+}
+
+/**
+ * Remplace les coups de main de la saison par les réponses importées. Chaque
+ * réponse est rattachée à un adhérent de la saison par nom, prénom (dans les
+ * deux ordres) et date de naissance ; les autres (adhésion non finalisée,
+ * orthographe différente…) sont écartées et renvoyées pour le compte rendu.
+ */
+export async function replaceCoupsDeMain(
+  saison: string,
+  reponses: CoupDeMainReponse[]
+): Promise<{ importees: number; nonRetrouvees: string[] }> {
+  await ensureSchema();
+  const { rows: adherents } = await getPool().query<{ name_key: string; date_naissance: string }>(
+    "SELECT name_key, date_naissance FROM adherents_saison WHERE saison = $1",
+    [saison]
+  );
+  const connus = new Set(adherents.map((a) => `${a.name_key}|${a.date_naissance}`));
+  const retenues = new Map<string, { nameKey: string; dateNaissance: string; actions: string[] }>();
+  const nonRetrouvees: string[] = [];
+  for (const r of reponses) {
+    const nameKeyTrouvee = [nameKey(r.prenom, r.nom), nameKey(r.nom, r.prenom)].find((k) =>
+      connus.has(`${k}|${r.dateNaissance}`)
+    );
+    if (!nameKeyTrouvee) {
+      nonRetrouvees.push(`${r.prenom} ${r.nom}`.trim());
+      continue;
+    }
+    // Plusieurs réponses pour un même adhérent : la dernière du fichier l'emporte.
+    retenues.set(`${nameKeyTrouvee}|${r.dateNaissance}`, {
+      nameKey: nameKeyTrouvee,
+      dateNaissance: r.dateNaissance,
+      actions: r.actions,
+    });
+  }
+  // Rien de rattaché (mauvais fichier, liste des adhérents pas encore
+  // importée) : on garde les données en place plutôt que de vider la saison.
+  if (retenues.size === 0) return { importees: 0, nonRetrouvees };
+
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM coups_de_main WHERE saison = $1", [saison]);
+    for (const r of retenues.values()) {
+      await client.query(
+        "INSERT INTO coups_de_main (saison, name_key, date_naissance, actions) VALUES ($1, $2, $3, $4)",
+        [saison, r.nameKey, r.dateNaissance, r.actions]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+  return { importees: retenues.size, nonRetrouvees };
+}
+
+export interface CoupDeMainAdherentRow {
+  id: number;
+  nom: string;
+  prenom: string;
+  sexe: string | null;
+  date_naissance: string;
+  statut_tarif: string | null;
+  profil: string | null;
+  /** null : aucune réponse importée pour cet adhérent. */
+  actions: string[] | null;
+  importe_le: string | null;
+}
+
+/** Adhérents de la saison avec leurs coups de main (null si aucune réponse rattachée). */
+export async function getCoupsDeMainSaison(saison: string): Promise<CoupDeMainAdherentRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<CoupDeMainAdherentRow>(
+    `
+    SELECT a.id, a.nom, a.prenom, a.sexe, a.date_naissance, a.statut_tarif, a.profil,
+           c.actions, c.importe_le
+    FROM adherents_saison a
+    LEFT JOIN coups_de_main c
+      ON c.saison = a.saison AND c.name_key = a.name_key AND c.date_naissance = a.date_naissance
+    WHERE a.saison = $1
+    ORDER BY lower(a.nom), lower(a.prenom)
+    `,
+    [saison]
   );
   return rows;
 }
