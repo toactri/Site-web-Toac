@@ -11,8 +11,9 @@ export default function ListeAttenteForm({ envoye }: { envoye: boolean }) {
   if (envoye) {
     return (
       <p role="status" className="rounded-md border border-green-300 bg-green-50 p-4 text-sm text-green-800">
-        Merci, ton inscription sur la liste d&apos;attente est bien enregistrée ! Nous reviendrons vers toi
-        avant l&apos;ouverture des inscriptions pour t&apos;indiquer la marche à suivre.
+        Merci, ton inscription sur la liste d&apos;attente est bien enregistrée ! Tu vas recevoir un email de
+        confirmation (pense à vérifier tes spams). Nous reviendrons vers toi avant l&apos;ouverture des
+        inscriptions pour t&apos;indiquer la marche à suivre.
       </p>
     );
   }

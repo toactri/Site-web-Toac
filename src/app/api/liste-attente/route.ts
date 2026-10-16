@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { upsertListeAttente, DatabaseNotConfiguredError } from "@/lib/db";
+import { upsertListeAttente, insertListeAttenteSuspecte, DatabaseNotConfiguredError } from "@/lib/db";
+import { confirmListeAttente } from "@/lib/listeAttenteNotification";
 import { buildErrorHtml } from "@/lib/errorHtml";
 import { checkFormSubmission } from "@/lib/formGuard";
 import { ageAt } from "@/lib/age";
@@ -57,28 +58,35 @@ export async function POST(request: NextRequest) {
     return htmlError("Merci d'accepter que le club conserve tes coordonnées pour pouvoir t'inscrire.");
   }
 
-  // Robot probable : même redirection qu'un envoi réussi, rien n'est enregistré.
+  const inscription = {
+    saison: LISTE_ATTENTE_SAISON,
+    nom,
+    prenom,
+    genre,
+    email,
+    telephone,
+    date_naissance: dateNaissance,
+    statut,
+    benevole_tdl: benevole === "oui",
+  };
+
   const guard = checkFormSubmission(form, { nom, prenom });
-  if (guard.kind === "spam") {
-    console.info("[liste-attente] Inscription bloquée (anti-spam) :", guard.reason, { email });
-    return NextResponse.redirect(new URL("/adhesion?attente=1#liste-attente", request.url), 303);
-  }
   if (guard.kind === "reload") {
     return htmlError("Le formulaire a expiré. Recharge la page puis renvoie ton inscription.");
   }
 
   try {
-    await upsertListeAttente({
-      saison: LISTE_ATTENTE_SAISON,
-      nom,
-      prenom,
-      genre,
-      email,
-      telephone,
-      date_naissance: dateNaissance,
-      statut,
-      benevole_tdl: benevole === "oui",
-    });
+    if (guard.kind === "spam") {
+      // Robot probable : même message de succès (sans rien lui signaler),
+      // mais l'envoi est gardé, marqué suspect, pour que le bureau vérifie —
+      // un humain peut s'y faire prendre. Pas d'email de confirmation : un
+      // robot pourrait s'en servir pour écrire à des inconnus.
+      console.info("[liste-attente] Envoi suspect (anti-spam) :", guard.reason, { email });
+      await insertListeAttenteSuspecte(inscription, guard.reason);
+    } else {
+      const id = await upsertListeAttente(inscription);
+      await confirmListeAttente({ id, saison: LISTE_ATTENTE_SAISON, nom, prenom, email });
+    }
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) {
       console.error(error.message);

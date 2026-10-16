@@ -340,6 +340,14 @@ function ensureSchema(): Promise<void> {
         );
         CREATE UNIQUE INDEX IF NOT EXISTS liste_attente_email
           ON liste_attente (saison, lower(email));
+        -- suspect : raison du blocage anti-spam (envoi gardé pour vérification
+        -- par le bureau au lieu d'être jeté) ; null = inscription normale.
+        -- confirmation_* : email de confirmation envoyé à la personne inscrite.
+        ALTER TABLE liste_attente
+          ADD COLUMN IF NOT EXISTS suspect TEXT,
+          ADD COLUMN IF NOT EXISTS confirmation_statut TEXT,
+          ADD COLUMN IF NOT EXISTS confirmation_le TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS confirmation_erreur TEXT;
 
         -- Migration idempotente des colonnes ajoutées après coup à la table
         -- historique inscriptions (ancien parcours Monetico).
@@ -1153,8 +1161,9 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
           AND lower(btrim(a.statut_dossier)) IN ('payé', 'paye')
       )
     UNION ALL
-    -- Inscrits sur la liste d'attente de la saison la plus lointaine.
-    SELECT 'listeAttente', count(*)::int, 0
+    -- Inscrits sur la liste d'attente de la saison la plus lointaine
+    -- (« à traiter » = envois suspects à vérifier).
+    SELECT 'listeAttente', count(*) FILTER (WHERE suspect IS NULL)::int, count(*) FILTER (WHERE suspect IS NOT NULL)::int
     FROM liste_attente
     WHERE saison = (SELECT max(saison) FROM liste_attente)
     `
@@ -1610,22 +1619,39 @@ export interface ListeAttenteRow {
   origine: string;
   /** Pour les inscrits repris du Google Form : statut de leur dossier 2026/2027 (Refusé, Abandonné…). */
   statut_dossier_precedent: string | null;
+  /** Raison du blocage anti-spam, null pour une inscription normale. */
+  suspect: string | null;
+  confirmation_statut: "envoyee" | "ignoree" | "echec" | null;
+  confirmation_le: string | null;
+  confirmation_erreur: string | null;
 }
 
-export type NouvelleListeAttente = Omit<ListeAttenteRow, "id" | "cree_le" | "origine" | "statut_dossier_precedent">;
+export type NouvelleListeAttente = Omit<
+  ListeAttenteRow,
+  | "id"
+  | "cree_le"
+  | "origine"
+  | "statut_dossier_precedent"
+  | "suspect"
+  | "confirmation_statut"
+  | "confirmation_le"
+  | "confirmation_erreur"
+>;
 
 /**
  * Inscription (ou mise à jour, même email) sur la liste d'attente. Une
- * réinscription garde la date d'origine, donc le rang dans la liste.
+ * réinscription garde la date d'origine, donc le rang dans la liste, et
+ * lève un éventuel marquage suspect. Renvoie l'identifiant de la ligne.
  */
-export async function upsertListeAttente(p: NouvelleListeAttente): Promise<void> {
+export async function upsertListeAttente(p: NouvelleListeAttente): Promise<number> {
   await ensureSchema();
-  await getPool().query(
+  const { rows } = await getPool().query<{ id: number }>(
     `
     INSERT INTO liste_attente
       (saison, nom, prenom, genre, email, telephone, date_naissance, statut, benevole_tdl)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     ON CONFLICT (saison, lower(email)) DO UPDATE SET
+      suspect = NULL,
       nom = EXCLUDED.nom,
       prenom = EXCLUDED.prenom,
       genre = EXCLUDED.genre,
@@ -1635,8 +1661,41 @@ export async function upsertListeAttente(p: NouvelleListeAttente): Promise<void>
       statut = EXCLUDED.statut,
       benevole_tdl = EXCLUDED.benevole_tdl,
       modifie_le = now()
+    RETURNING id
     `,
     [p.saison, p.nom, p.prenom, p.genre, p.email, p.telephone, p.date_naissance, p.statut, p.benevole_tdl]
+  );
+  return rows[0].id;
+}
+
+/**
+ * Envoi bloqué par l'anti-spam, gardé pour que le bureau puisse vérifier
+ * (un humain peut s'y faire prendre). N'écrase jamais une inscription
+ * existante avec le même email : un robot pourrait réutiliser l'adresse
+ * d'une vraie personne.
+ */
+export async function insertListeAttenteSuspecte(p: NouvelleListeAttente, raison: string): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    `
+    INSERT INTO liste_attente
+      (saison, nom, prenom, genre, email, telephone, date_naissance, statut, benevole_tdl, suspect)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ON CONFLICT (saison, lower(email)) DO NOTHING
+    `,
+    [p.saison, p.nom, p.prenom, p.genre, p.email, p.telephone, p.date_naissance, p.statut, p.benevole_tdl, raison]
+  );
+}
+
+export async function recordListeAttenteConfirmation(
+  id: number,
+  statut: "envoyee" | "ignoree" | "echec",
+  erreur: string | null
+): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    "UPDATE liste_attente SET confirmation_statut = $2, confirmation_erreur = $3, confirmation_le = now() WHERE id = $1",
+    [id, statut, erreur]
   );
 }
 
@@ -1645,7 +1704,8 @@ export async function getListeAttente(saison: string): Promise<ListeAttenteRow[]
   await ensureSchema();
   const { rows } = await getPool().query<ListeAttenteRow>(
     `SELECT id, cree_le, saison, nom, prenom, genre, email, telephone, date_naissance, statut,
-            benevole_tdl, origine, statut_dossier_precedent
+            benevole_tdl, origine, statut_dossier_precedent, suspect,
+            confirmation_statut, confirmation_le, confirmation_erreur
      FROM liste_attente WHERE saison = $1 ORDER BY cree_le, id`,
     [saison]
   );

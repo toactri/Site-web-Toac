@@ -104,12 +104,25 @@ export default function ListeAttenteTable({ inscrits }: { inscrits: ListeAttente
                 <td className={`${tdClass} whitespace-nowrap`}>{dateCourte(i.cree_le)}</td>
                 <td className={`${tdClass} font-medium`}>
                   {i.nom.toUpperCase()} {i.prenom}
+                  {i.suspect && (
+                    <span
+                      title={`Bloqué par l'anti-spam : ${i.suspect}`}
+                      className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-normal text-amber-800"
+                    >
+                      Suspect
+                    </span>
+                  )}
                 </td>
                 <td className={tdClass}>{i.genre}</td>
                 <td className={`${tdClass} tabular-nums`}>{ageAt(i.date_naissance) ?? "—"}</td>
                 <td className={tdClass}>
                   <a href={`mailto:${i.email}`} className="underline">{i.email}</a>
                   <div className="text-toac-blue-900/70">{i.telephone}</div>
+                  {i.confirmation_statut && i.confirmation_statut !== "envoyee" && (
+                    <div className="text-xs text-red-700" title={i.confirmation_erreur ?? undefined}>
+                      Email de confirmation non envoyé
+                    </div>
+                  )}
                 </td>
                 <td className={tdClass}>{i.statut}</td>
                 <td className={tdClass}>

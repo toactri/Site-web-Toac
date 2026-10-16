@@ -36,7 +36,10 @@ export default async function BureauListeAttentePage() {
     if (!(error instanceof DatabaseNotConfiguredError)) throw error;
     dbError = true;
   }
-  const colonnes = statsListeAttente(inscrits);
+  // Envois suspects (anti-spam) : listés pour vérification, hors indicateurs.
+  const valides = inscrits.filter((i) => !i.suspect);
+  const suspects = inscrits.length - valides.length;
+  const colonnes = statsListeAttente(valides);
   const global = colonnes[0].lignes;
   const valeur = (libelle: string) => global.find((l) => l.libelle === libelle);
   const tdl = valeur("Dispo bénévolat TDL");
@@ -49,7 +52,9 @@ export default async function BureauListeAttentePage() {
       <p className="mt-4 text-toac-blue-900/80">
         Personnes inscrites via le formulaire de la page{" "}
         <a href="/adhesion#liste-attente" className="underline">Adhésion</a>, et demandes 2026/2027 non abouties
-        reprises du Google Form. Une personne qui se réinscrit avec le même email garde sa place.
+        reprises du Google Form. Une personne qui se réinscrit avec le même email garde sa place. Les envois
+        bloqués par l&apos;anti-spam sont marqués « Suspect » : à retirer si ce sont des robots, sinon la
+        personne est déjà dans la liste.
       </p>
 
       {dbError ? (
@@ -58,7 +63,10 @@ export default async function BureauListeAttentePage() {
         <>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {[
-              { valeur: inscrits.length, libelle: "inscrits sur la liste d'attente" },
+              {
+                valeur: valides.length,
+                libelle: `inscrits sur la liste d'attente${suspects ? ` (+ ${suspects} envoi${suspects > 1 ? "s" : ""} suspect${suspects > 1 ? "s" : ""} à vérifier)` : ""}`,
+              },
               {
                 valeur: tdl?.valeur ?? 0,
                 libelle: `disponibles pour le bénévolat TDL${tdl?.pourcentage !== null && tdl?.pourcentage !== undefined ? ` (${tdl.pourcentage} %)` : ""}`,
