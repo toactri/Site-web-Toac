@@ -30,7 +30,9 @@ export default async function BureauImportsPage() {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau/imports");
   if (session.role !== "admin") redirect("/espace-adherents");
-  const superAdmin = isSuperAdmin(session);
+  // Réservé au super-administrateur (Bureau → Admin).
+  if (!isSuperAdmin(session)) redirect("/espace-adherents/bureau");
+  const superAdmin = true;
 
   let adherents: Awaited<ReturnType<typeof getAdherentsSaisonStats>> = [];
   let coupsDeMain: Awaited<ReturnType<typeof getCoupsDeMainStats>> = [];

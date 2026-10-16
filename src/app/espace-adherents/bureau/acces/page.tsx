@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 import {
   getAccesEspace,
   getAdherentsSaisonStats,
@@ -24,6 +25,8 @@ export default async function BureauAccesPage() {
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau/acces");
   if (session.role !== "admin") redirect("/espace-adherents");
+  // Réservé au super-administrateur (Bureau → Admin).
+  if (!isSuperAdmin(session)) redirect("/espace-adherents/bureau");
 
   let acces: AccesEspaceRow[] = [];
   let totalSaison: { saison: string; total: number } | null = null;

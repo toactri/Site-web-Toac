@@ -26,20 +26,22 @@ const MEMBER_ITEM: NavItem = {
 // connexion, puis mène à l'accueil de l'espace.
 const MEMBER_LOGIN_LINK: NavLink = { label: "Espace adhérents", href: "/espace-adherents", protected: true };
 
-const BUREAU_ITEM: NavItem = {
-  label: "Bureau",
-  children: [
-    { label: "Dossiers adhérents", href: "/espace-adherents/bureau" },
-    { label: "Liste d'attente", href: "/espace-adherents/bureau/liste-attente" },
-    { label: "Avantages partenaires", href: "/espace-adherents/bureau/partenaires" },
-    { label: "Décharges musculation", href: "/espace-adherents/bureau/musculation" },
-    { label: "Attestations de paiement", href: "/espace-adherents/bureau/attestations" },
-    { label: "Accès espace adhérents", href: "/espace-adherents/bureau/acces" },
-    { label: "Coups de main", href: "/espace-adherents/bureau/coups-de-main" },
-    { label: "Imports", href: "/espace-adherents/bureau/imports" },
-    { label: "Diagnostic serveur", href: "/espace-adherents/bureau/diagnostic" },
-  ],
-};
+// Menu "Bureau" : Accueil (page récap) en tête, puis Admin pour les
+// super-administrateurs (rôles, imports, accès à l'espace, diagnostic).
+function bureauItem(superAdmin: boolean): NavItem {
+  return {
+    label: "Bureau",
+    children: [
+      { label: "Accueil", href: "/espace-adherents/bureau" },
+      ...(superAdmin ? [{ label: "Admin", href: "/espace-adherents/bureau/admin" }] : []),
+      { label: "Liste d'attente", href: "/espace-adherents/bureau/liste-attente" },
+      { label: "Avantages partenaires", href: "/espace-adherents/bureau/partenaires" },
+      { label: "Décharges musculation", href: "/espace-adherents/bureau/musculation" },
+      { label: "Attestations de paiement", href: "/espace-adherents/bureau/attestations" },
+      { label: "Coups de main", href: "/espace-adherents/bureau/coups-de-main" },
+    ],
+  };
+}
 
 export default function Navbar({ items }: { items?: NavItem[] | null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -51,8 +53,10 @@ export default function Navbar({ items }: { items?: NavItem[] | null }) {
     if (!auth.loggedIn) return base;
     // Menu "Bureau" : uniquement une fois connecté avec un compte admin — sans
     // ça il fallait deviner l'URL de chaque page bureau pour y accéder.
-    return auth.role === "admin" ? [...base, MEMBER_ITEM, BUREAU_ITEM] : [...base, MEMBER_ITEM];
-  }, [items, auth.loggedIn, auth.role]);
+    return auth.role === "admin"
+      ? [...base, MEMBER_ITEM, bureauItem(Boolean(auth.superAdmin))]
+      : [...base, MEMBER_ITEM];
+  }, [items, auth.loggedIn, auth.role, auth.superAdmin]);
 
   function handleLinkClick(
     event: React.MouseEvent<HTMLAnchorElement>,

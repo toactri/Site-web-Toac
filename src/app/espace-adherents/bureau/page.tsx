@@ -43,6 +43,14 @@ export default async function BureauDossiersPage() {
   // une liste importée avant reste à réimporter pour les alimenter.
   const aReimporter = adherents.length > 0 && adherents.every((a) => a.profil === null);
 
+  const superAdmin = isSuperAdmin(session);
+  // Lien vers les imports pour le super-administrateur, simple mention sinon.
+  const imports = superAdmin ? (
+    <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>
+  ) : (
+    "le super-administrateur"
+  );
+
   const tuiles = [
     {
       href: "/espace-adherents/bureau/partenaires",
@@ -67,14 +75,6 @@ export default async function BureauDossiersPage() {
       libelleValides: "envoyées",
       enAttente: compteurs?.attestations.aTraiter,
       libelleEnAttente: "non envoyées",
-    },
-    {
-      href: "/espace-adherents/bureau/acces",
-      titre: "Accès espace adhérents",
-      valides: compteurs?.acces.valides,
-      libelleValides: "personnes connectées",
-      enAttente: 0,
-      libelleEnAttente: "",
     },
     {
       href: "/espace-adherents/bureau/coups-de-main",
@@ -111,7 +111,7 @@ export default async function BureauDossiersPage() {
             as="p"
             value={
               introBlock.body ||
-              "Adhérents de la saison et indicateurs du tableau de bord, d'après la dernière liste importée depuis le Google Sheets d'adhésion (Bureau → Imports)."
+              "Adhérents de la saison et indicateurs du tableau de bord, d'après la dernière liste importée depuis le Google Sheets d'adhésion (Bureau → Admin → Imports)."
             }
             target={{ kind: "block", id: introBlock.id, field: "body" }}
             multiline
@@ -125,7 +125,7 @@ export default async function BureauDossiersPage() {
           </h1>
           <p className="mt-4 text-toac-blue-900/80">
             Adhérents de la saison et indicateurs du tableau de bord, d&apos;après la dernière liste importée
-            depuis le Google Sheets d&apos;adhésion (Bureau → Imports).
+            depuis le Google Sheets d&apos;adhésion (Bureau → Admin → Imports).
           </p>
         </>
       )}
@@ -159,30 +159,13 @@ export default async function BureauDossiersPage() {
           </Link>
         ))}
       </div>
-      <div className="mt-3 flex flex-wrap gap-3">
-        {isSuperAdmin(session) && (
-          <Link
-            href="/espace-adherents/bureau/roles"
-            className="rounded-md border border-toac-blue-800/40 px-4 py-2 text-sm font-medium text-toac-blue-900/70 hover:bg-toac-blue-950 hover:text-white"
-          >
-            Rôles et accès →
-          </Link>
-        )}
-        <Link
-          href="/espace-adherents/bureau/diagnostic"
-          className="rounded-md border border-toac-blue-800/40 px-4 py-2 text-sm font-medium text-toac-blue-900/70 hover:bg-toac-blue-950 hover:text-white"
-        >
-          Diagnostic serveur →
-        </Link>
-      </div>
 
       {dbError ? (
         <div className="mt-8"><DbSetupNotice /></div>
       ) : !saison ? (
         <p className="mt-8 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          Aucune liste d&apos;adhérents importée. Importez l&apos;onglet « Dossiers (tri/nom) » du Google Sheets
-          depuis{" "}
-          <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>.
+          Aucune liste d&apos;adhérents importée : l&apos;onglet « Dossiers (tri/nom) » du Google Sheets s&apos;importe
+          par {imports}.
         </p>
       ) : (
         <>
@@ -191,15 +174,13 @@ export default async function BureauDossiersPage() {
             <p className="mt-1 text-sm text-toac-blue-900/70">
               Données du Google Sheets importées le{" "}
               {new Date(importeLe).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}
-              {" "}— pour actualiser, réimportez la liste depuis{" "}
-              <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>.
+              {" "}— actualisation par {imports}.
             </p>
           ) : null}
           {aReimporter ? (
             <p className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-              La liste actuelle a été importée avant l&apos;ajout des indicateurs : réimportez-la une fois depuis{" "}
-              <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>{" "}
-              pour remplir le profil, le bénévolat TDL, le tarif et les montants.
+              La liste actuelle a été importée avant l&apos;ajout des indicateurs : elle doit être réimportée une fois
+              (par {imports}) pour remplir le profil, le bénévolat TDL, le tarif et les montants.
             </p>
           ) : null}
           <div className="mt-4">

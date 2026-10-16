@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 import { BLOB_TOKEN_ENV_NAMES, collectDiagnostic, runBlobTest } from "@/lib/diagnostic";
 
 export const metadata: Metadata = {
@@ -22,6 +23,8 @@ export default async function BureauDiagnosticPage({
   const session = await getSession();
   if (!session) redirect("/connexion?next=/espace-adherents/bureau/diagnostic");
   if (session.role !== "admin") redirect("/espace-adherents");
+  // Réservé au super-administrateur (Bureau → Admin).
+  if (!isSuperAdmin(session)) redirect("/espace-adherents/bureau");
 
   const { test } = await searchParams;
   const blobTest = test === "blob" ? await runBlobTest() : null;

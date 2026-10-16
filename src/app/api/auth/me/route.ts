@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 
 /** Statut de connexion minimal, sans donnée sensible, pour piloter l'UI (Navbar). */
 export async function GET() {
@@ -11,5 +12,8 @@ export async function GET() {
     loggedIn: true,
     name: session.name,
     role: session.role,
+    // Affiche l'entrée « Admin » du menu Bureau ; les pages concernées le
+    // vérifient elles-mêmes côté serveur.
+    superAdmin: isSuperAdmin(session),
   });
 }

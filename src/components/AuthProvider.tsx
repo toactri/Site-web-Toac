@@ -15,6 +15,7 @@ interface AuthState {
   loggedIn: boolean;
   name?: string;
   role?: "member" | "admin";
+  superAdmin?: boolean;
 }
 
 interface AuthContextValue {

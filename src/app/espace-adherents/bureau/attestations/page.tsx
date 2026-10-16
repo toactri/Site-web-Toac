@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 import {
   getAttestations,
   getAdherentsSaisonStats,
@@ -62,10 +63,12 @@ export default async function BureauAttestationsPage() {
         {stats[0] ? (
           <>
             Liste des adhérents {stats[0].saison} : {stats[0].payes} dossiers payés, importée le{" "}
-            {new Date(stats[0].importe_le).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })} —{" "}
+            {new Date(stats[0].importe_le).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}.{" "}
           </>
         ) : null}
-        <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>.
+        {isSuperAdmin(session) && (
+          <Link href="/espace-adherents/bureau/imports" className="underline">Imports et signataire →</Link>
+        )}
       </p>
 
       {dbError ? (

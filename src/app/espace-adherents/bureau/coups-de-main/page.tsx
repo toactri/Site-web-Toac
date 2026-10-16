@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 import {
   getCoupsDeMainSaison,
   getLatestSaison,
@@ -112,9 +113,11 @@ export default async function BureauCoupsDeMainPage() {
         Réponses à la question « Je souhaite donner un coup de main sur : » du formulaire d&apos;adhésion
         {saison ? ` (saison ${saison})` : ""}, pour solliciter les adhérents motivés par chaque action.
         {importeLe
-          ? ` Dernier import le ${new Date(importeLe).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })} `
+          ? ` Dernier import le ${new Date(importeLe).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}. `
           : " "}
-        (<Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>).
+        {isSuperAdmin(session) && (
+          <Link href="/espace-adherents/bureau/imports" className="underline">Imports →</Link>
+        )}
       </p>
 
       {dbError ? (
@@ -123,8 +126,13 @@ export default async function BureauCoupsDeMainPage() {
         </div>
       ) : stats.repondants === 0 ? (
         <p className="mt-8 rounded-md border border-toac-gray-200 bg-toac-gray-50 p-4 text-sm text-toac-blue-900/70">
-          Aucune réponse importée pour l&apos;instant : importez l&apos;onglet « Réponses » du Google Sheets depuis{" "}
-          <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>.
+          Aucune réponse importée pour l&apos;instant : l&apos;onglet « Réponses » du Google Sheets s&apos;importe par{" "}
+          {isSuperAdmin(session) ? (
+            <Link href="/espace-adherents/bureau/imports" className="underline">Imports</Link>
+          ) : (
+            "le super-administrateur"
+          )}
+          .
         </p>
       ) : (
         <>
