@@ -79,6 +79,10 @@ export default function ListeAttenteForm({ envoye }: { envoye: boolean }) {
             <input type="radio" name="benevole_tdl" value="non" /> Non
           </label>
         </div>
+        <p className="mt-2 text-xs text-toac-blue-900/60">
+          Les personnes venues nous aider lors de ce week-end seront prioritaires pour l&apos;adhésion 2027/2028,
+          dans la limite des places disponibles.
+        </p>
       </fieldset>
 
       <label className="flex items-start gap-2 text-sm text-toac-blue-900">

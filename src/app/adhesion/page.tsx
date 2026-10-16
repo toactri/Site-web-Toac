@@ -32,8 +32,7 @@ const SAISONS: Record<string, { heading: string; body: string }> = {
   [SAISON_SUIVANTE_SLOT]: {
     heading: "Saison 2027/2028",
     body:
-      "**Liste d'attente**\nInscris-toi ci-dessous pour être recontacté(e) avant l'ouverture des adhésions 2027/2028. " +
-      "Les personnes venues nous aider lors du week-end des Triathlons du Lauragais 2027 seront prioritaires.",
+      "**Liste d'attente**\nInscris-toi ci-dessous pour être recontacté(e) avant l'ouverture des adhésions 2027/2028.",
   },
   [SAISON_EN_COURS_SLOT]: {
     heading: "Saison 2026/2027",
