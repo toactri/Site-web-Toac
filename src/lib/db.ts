@@ -307,6 +307,9 @@ function ensureSchema(): Promise<void> {
           ajoute_le TIMESTAMPTZ NOT NULL DEFAULT now(),
           PRIMARY KEY (email, role)
         );
+        -- Fiche publique liée (produit du CMS, section « Bureau … » ou
+        -- « Encadrement sportif ») : supprimée avec le rôle.
+        ALTER TABLE roles_membres ADD COLUMN IF NOT EXISTS cms_fiche_id TEXT;
 
         -- Fréquentation de l'espace adhérents, pour la vue bureau : une ligne
         -- par email connecté. Mise à jour à chaque connexion (lien ou code)
@@ -1461,6 +1464,7 @@ export async function isAdherentSaisonCourante(email: string): Promise<boolean> 
 export interface RoleMembreRow {
   email: string;
   role: MembreRole;
+  cms_fiche_id: string | null;
   /** Nom de l'adhésion la plus récente si l'email y figure, sinon le nom saisi. */
   nom: string | null;
   adherent: boolean;
@@ -1472,7 +1476,7 @@ export async function listRolesMembres(): Promise<RoleMembreRow[]> {
   await ensureSchema();
   const { rows } = await getPool().query<RoleMembreRow>(
     `
-    SELECT r.email, r.role, COALESCE(a.prenom || ' ' || a.nom, r.nom) AS nom,
+    SELECT r.email, r.role, r.cms_fiche_id, COALESCE(a.prenom || ' ' || a.nom, r.nom) AS nom,
            (a.nom IS NOT NULL) AS adherent, r.ajoute_par, r.ajoute_le
     FROM roles_membres r
     LEFT JOIN LATERAL (
@@ -1499,9 +1503,23 @@ export async function addRoleMembre(email: string, role: MembreRole, nom: string
   );
 }
 
-export async function removeRoleMembre(email: string, role: MembreRole): Promise<void> {
+/** Retire le rôle et renvoie l'identifiant de la fiche CMS qui lui était liée. */
+export async function removeRoleMembre(email: string, role: MembreRole): Promise<{ cmsFicheId: string | null } | null> {
   await ensureSchema();
-  await getPool().query("DELETE FROM roles_membres WHERE email = $1 AND role = $2", [email, role]);
+  const { rows } = await getPool().query<{ cms_fiche_id: string | null }>(
+    "DELETE FROM roles_membres WHERE email = $1 AND role = $2 RETURNING cms_fiche_id",
+    [email, role]
+  );
+  return rows[0] ? { cmsFicheId: rows[0].cms_fiche_id } : null;
+}
+
+export async function setRoleFiche(email: string, role: MembreRole, cmsFicheId: string | null): Promise<void> {
+  await ensureSchema();
+  await getPool().query("UPDATE roles_membres SET cms_fiche_id = $3 WHERE email = $1 AND role = $2", [
+    email,
+    role,
+    cmsFicheId,
+  ]);
 }
 
 export interface ConnexionJetonRow {

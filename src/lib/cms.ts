@@ -36,6 +36,9 @@ const CMS_CONFIG = {
   siteId: fromEnv("CMS_SITE_ID", "f75cad77-b956-4822-83ff-bee764af2b4d"),
 };
 
+/** URL et clé publique du CMS, pour les appels serveur (src/lib/cmsFiches.ts). */
+export const CMS_CONNEXION = CMS_CONFIG;
+
 const isConfigured =
   CMS_CONFIG.supabaseUrl.startsWith("https://") &&
   CMS_CONFIG.supabaseAnonKey.length > 20 &&

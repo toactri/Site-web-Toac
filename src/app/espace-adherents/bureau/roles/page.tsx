@@ -37,7 +37,8 @@ export default async function BureauRolesPage() {
       <p className="mt-4 text-toac-blue-900/80">
         <strong>Bureau</strong> : accès à la vue bureau. <strong>Coach</strong> : connexion à l&apos;espace adhérents,
         même sans être adhérent ; les accès propres aux coachs viendront s&apos;y ajouter. Un ajout ou un retrait
-        s&apos;applique immédiatement, sans que la personne ait à se reconnecter.
+        s&apos;applique immédiatement, sans que la personne ait à se reconnecter. La fiche publique de la page « Le
+        bureau &amp; les coachs » est créée (ou reliée si elle existe) avec l&apos;accès, et supprimée avec lui.
       </p>
       <p className="mt-2 text-sm text-toac-blue-900/70">
         Super-administrateurs (gestion des rôles, imports, signataire), définis dans Vercel (SUPER_ADMIN_EMAILS) et

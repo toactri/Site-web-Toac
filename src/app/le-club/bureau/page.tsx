@@ -8,6 +8,7 @@ import { DISCIPLINE_LABELS, type Discipline } from "@/content/planning";
 import { getCmsCatalog, getCmsPageBlocks } from "@/lib/cms";
 import { CmsEditableText, CmsEditableImage, CmsEditPencil, CmsAddTile } from "@/components/cms-edit";
 import EnsureCmsProduct from "@/components/EnsureCmsProduct";
+import { BUREAU_SECTION_NAME } from "@/lib/cmsFiches";
 
 export const metadata: Metadata = pageMetadata({
   title: "Le bureau & les coachs",
@@ -22,7 +23,7 @@ export default async function BureauPage() {
     getCmsPageBlocks("bureau"),
   ]);
 
-  const bureauSection = cmsCatalog?.find((s) => s.name === "Bureau 2026");
+  const bureauSection = cmsCatalog?.find((s) => s.name === BUREAU_SECTION_NAME);
   const coachsSection = cmsCatalog?.find((s) => s.name === "Encadrement sportif");
   const honneurSection = cmsCatalog?.find((s) => s.name === "Président d'honneur");
   // Les encadrants uniquement "Musculation" ne sont pas des coachs : ils sont
