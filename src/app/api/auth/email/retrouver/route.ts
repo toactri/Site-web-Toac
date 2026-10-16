@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-    const identity = identityFromAdherentRow(adherent);
+    const identity = await identityFromAdherentRow(adherent);
     if (!identity) {
       return NextResponse.json(
         { error: `Aucune adresse email n'est associée à votre adhésion. Contactez le bureau via le ${CONTACT_BUREAU}.` },

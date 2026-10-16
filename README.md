@@ -68,15 +68,18 @@ lien + un code à 6 chiffres (15 min, usage unique, envoyés par Brevo). S'il ne
 donnée, il se fait reconnaître par nom, prénom et date de naissance : l'email part vers l'adresse de son
 dossier, affichée masquée. Un adhérent absent de la saison la plus récente ne peut plus se connecter.
 
-Les adresses listées dans `ADMIN_EMAILS` (séparées par des virgules) se connectent de la même façon avec le
-rôle bureau. Le compte `ADMIN_USERNAME` / `ADMIN_PASSWORD` reste disponible en secours (lien « Accès bureau
+Les rôles **bureau** (vue bureau) et **coach** s'attribuent sur le site, dans **Bureau → Rôles et accès**
+(super-administrateur uniquement) : un email et, pour une personne qui n'est pas adhérente, son nom. Ces
+personnes se connectent de la même façon, adhérentes ou non. Les rôles sont relus à chaque page : un retrait
+coupe l'accès immédiatement, un ajout s'applique sans reconnexion. L'ancienne variable `ADMIN_EMAILS` est
+reprise une seule fois dans la base puis ignorée. Le compte `ADMIN_USERNAME` / `ADMIN_PASSWORD` reste disponible en secours (lien « Accès bureau
 par identifiant » de la page de connexion).
 
 Les adresses de `SUPER_ADMIN_EMAILS` ont en plus accès aux réglages sensibles de **Bureau → Imports** :
 l'import de la liste des adhérents, l'import des réponses « coups de main » et le trésorier signataire avec sa
 signature. Les autres membres du bureau voient la page sans les formulaires, et les routes correspondantes (ainsi que l'image de
-signature) leur répondent « accès refusé ». Une adresse super-administrateur a aussi le rôle bureau, même
-absente de `ADMIN_EMAILS` ; le compte `ADMIN_USERNAME` n'est jamais super-administrateur.
+signature) leur répondent « accès refusé ». Une adresse super-administrateur a toujours accès à la vue bureau
+et gère les rôles ; le compte `ADMIN_USERNAME` n'est jamais super-administrateur.
 
 ### Comptes locaux (développement)
 

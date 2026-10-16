@@ -295,6 +295,19 @@ function ensureSchema(): Promise<void> {
           PRIMARY KEY (saison, name_key, date_naissance)
         );
 
+        -- Rôles attribués sur le site par le super-administrateur (Bureau →
+        -- Rôles et accès) : « bureau » (vue bureau) et « coach ». Une personne
+        -- peut cumuler les deux. nom : nom affiché pour une personne qui n'est
+        -- pas adhérente (coach extérieur…), sinon celui de son adhésion.
+        CREATE TABLE IF NOT EXISTS roles_membres (
+          email TEXT NOT NULL,
+          role TEXT NOT NULL CHECK (role IN ('bureau', 'coach')),
+          nom TEXT,
+          ajoute_par TEXT NOT NULL,
+          ajoute_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (email, role)
+        );
+
         -- Fréquentation de l'espace adhérents, pour la vue bureau : une ligne
         -- par email connecté. Mise à jour à chaque connexion (lien ou code)
         -- et au plus une fois par heure lors d'une visite de l'espace.
@@ -1500,6 +1513,79 @@ export async function getCoupsDeMainSaison(saison: string): Promise<CoupDeMainAd
     [saison]
   );
   return rows;
+}
+
+export type MembreRole = "bureau" | "coach";
+
+/** Rôles attribués sur le site à cet email, et le nom saisi pour lui s'il y en a un. */
+export async function getRolesMembre(email: string): Promise<{ roles: MembreRole[]; nom: string | null }> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ role: MembreRole; nom: string | null }>(
+    "SELECT role, nom FROM roles_membres WHERE email = $1 ORDER BY role",
+    [email]
+  );
+  return { roles: rows.map((r) => r.role), nom: rows.find((r) => r.nom)?.nom ?? null };
+}
+
+/** L'email figure-t-il parmi les adhérents de la saison la plus récente ? */
+export async function isAdherentSaisonCourante(email: string): Promise<boolean> {
+  await ensureSchema();
+  const { rows } = await getPool().query(
+    `
+    SELECT 1 FROM adherents_saison
+    WHERE lower(btrim(email)) = lower(btrim($1))
+      AND saison = (SELECT max(saison) FROM adherents_saison)
+    LIMIT 1
+    `,
+    [email]
+  );
+  return rows.length > 0;
+}
+
+export interface RoleMembreRow {
+  email: string;
+  role: MembreRole;
+  /** Nom de l'adhésion la plus récente si l'email y figure, sinon le nom saisi. */
+  nom: string | null;
+  adherent: boolean;
+  ajoute_par: string;
+  ajoute_le: string;
+}
+
+export async function listRolesMembres(): Promise<RoleMembreRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<RoleMembreRow>(
+    `
+    SELECT r.email, r.role, COALESCE(a.prenom || ' ' || a.nom, r.nom) AS nom,
+           (a.nom IS NOT NULL) AS adherent, r.ajoute_par, r.ajoute_le
+    FROM roles_membres r
+    LEFT JOIN LATERAL (
+      SELECT nom, prenom FROM adherents_saison
+      WHERE lower(btrim(email)) = r.email
+        AND saison = (SELECT max(saison) FROM adherents_saison)
+      LIMIT 1
+    ) a ON true
+    ORDER BY r.role, lower(COALESCE(a.nom, r.nom, r.email))
+    `
+  );
+  return rows;
+}
+
+/** Attribue un rôle (sans effet s'il l'est déjà, sauf mise à jour du nom saisi). */
+export async function addRoleMembre(email: string, role: MembreRole, nom: string | null, ajoutePar: string): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    `
+    INSERT INTO roles_membres (email, role, nom, ajoute_par) VALUES ($1, $2, $3, $4)
+    ON CONFLICT (email, role) DO UPDATE SET nom = COALESCE(EXCLUDED.nom, roles_membres.nom)
+    `,
+    [email, role, nom, ajoutePar]
+  );
+}
+
+export async function removeRoleMembre(email: string, role: MembreRole): Promise<void> {
+  await ensureSchema();
+  await getPool().query("DELETE FROM roles_membres WHERE email = $1 AND role = $2", [email, role]);
 }
 
 export interface ConnexionJetonRow {
