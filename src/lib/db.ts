@@ -305,6 +305,29 @@ function ensureSchema(): Promise<void> {
           connexions INTEGER NOT NULL DEFAULT 0
         );
 
+        -- Liste d'attente de la saison suivante (formulaire de la page
+        -- Adhésion, une fois le club complet). Une ligne par email et par
+        -- saison : une nouvelle inscription avec le même email met à jour
+        -- la ligne existante sans lui faire perdre sa place (cree_le).
+        CREATE TABLE IF NOT EXISTS liste_attente (
+          id SERIAL PRIMARY KEY,
+          cree_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          modifie_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          saison TEXT NOT NULL,
+          nom TEXT NOT NULL,
+          prenom TEXT NOT NULL,
+          genre TEXT NOT NULL,
+          email TEXT NOT NULL,
+          telephone TEXT NOT NULL,
+          date_naissance TEXT NOT NULL,
+          statut TEXT NOT NULL,
+          benevole_tdl BOOLEAN NOT NULL,
+          origine TEXT NOT NULL DEFAULT 'site',
+          statut_dossier_precedent TEXT
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS liste_attente_email
+          ON liste_attente (saison, lower(email));
+
         -- Migration idempotente des colonnes ajoutées après coup à la table
         -- historique inscriptions (ancien parcours Monetico).
         DO $$
@@ -1074,6 +1097,7 @@ export interface BureauCompteurs {
   attestations: { valides: number; aTraiter: number };
   acces: { valides: number; aTraiter: number };
   coupsDeMain: { valides: number; aTraiter: number };
+  listeAttente: { valides: number; aTraiter: number };
 }
 
 /**
@@ -1115,6 +1139,11 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
         WHERE a.saison = c.saison AND a.name_key = c.name_key AND a.date_naissance = c.date_naissance
           AND lower(btrim(a.statut_dossier)) IN ('payé', 'paye')
       )
+    UNION ALL
+    -- Inscrits sur la liste d'attente de la saison la plus lointaine.
+    SELECT 'listeAttente', count(*)::int, 0
+    FROM liste_attente
+    WHERE saison = (SELECT max(saison) FROM liste_attente)
     `
   );
   const compteurs: BureauCompteurs = {
@@ -1123,6 +1152,7 @@ export async function getBureauCompteurs(): Promise<BureauCompteurs> {
     attestations: { valides: 0, aTraiter: 0 },
     acces: { valides: 0, aTraiter: 0 },
     coupsDeMain: { valides: 0, aTraiter: 0 },
+    listeAttente: { valides: 0, aTraiter: 0 },
   };
   for (const r of rows) compteurs[r.fonction] = { valides: r.valides, aTraiter: r.a_traiter };
   return compteurs;
@@ -1570,6 +1600,71 @@ export async function markConnexionJetonUsed(id: number): Promise<boolean> {
 }
 
 /** Ferme la connexion — à appeler en fin d'exécution des scripts CLI. */
+export interface ListeAttenteRow {
+  id: number;
+  cree_le: string;
+  saison: string;
+  nom: string;
+  prenom: string;
+  genre: string;
+  email: string;
+  telephone: string;
+  /** YYYY-MM-DD */
+  date_naissance: string;
+  statut: string;
+  benevole_tdl: boolean;
+  /** "site" (formulaire de la page Adhésion) ou "gform-2026-2027" (repris du Google Form). */
+  origine: string;
+  /** Pour les inscrits repris du Google Form : statut de leur dossier 2026/2027 (Refusé, Abandonné…). */
+  statut_dossier_precedent: string | null;
+}
+
+export type NouvelleListeAttente = Omit<ListeAttenteRow, "id" | "cree_le" | "origine" | "statut_dossier_precedent">;
+
+/**
+ * Inscription (ou mise à jour, même email) sur la liste d'attente. Une
+ * réinscription garde la date d'origine, donc le rang dans la liste.
+ */
+export async function upsertListeAttente(p: NouvelleListeAttente): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    `
+    INSERT INTO liste_attente
+      (saison, nom, prenom, genre, email, telephone, date_naissance, statut, benevole_tdl)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    ON CONFLICT (saison, lower(email)) DO UPDATE SET
+      nom = EXCLUDED.nom,
+      prenom = EXCLUDED.prenom,
+      genre = EXCLUDED.genre,
+      email = EXCLUDED.email,
+      telephone = EXCLUDED.telephone,
+      date_naissance = EXCLUDED.date_naissance,
+      statut = EXCLUDED.statut,
+      benevole_tdl = EXCLUDED.benevole_tdl,
+      modifie_le = now()
+    `,
+    [p.saison, p.nom, p.prenom, p.genre, p.email, p.telephone, p.date_naissance, p.statut, p.benevole_tdl]
+  );
+}
+
+/** Inscrits d'une saison, par ordre d'arrivée. */
+export async function getListeAttente(saison: string): Promise<ListeAttenteRow[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<ListeAttenteRow>(
+    `SELECT id, cree_le, saison, nom, prenom, genre, email, telephone, date_naissance, statut,
+            benevole_tdl, origine, statut_dossier_precedent
+     FROM liste_attente WHERE saison = $1 ORDER BY cree_le, id`,
+    [saison]
+  );
+  return rows;
+}
+
+export async function deleteListeAttente(id: number): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await getPool().query("DELETE FROM liste_attente WHERE id = $1", [id]);
+  return (rowCount ?? 0) > 0;
+}
+
 export async function closeDb(): Promise<void> {
   if (pool) await pool.end();
 }

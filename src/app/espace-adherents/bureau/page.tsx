@@ -83,6 +83,14 @@ export default async function BureauDossiersPage() {
       enAttente: 0,
       libelleEnAttente: "",
     },
+    {
+      href: "/espace-adherents/bureau/liste-attente",
+      titre: "Liste d'attente",
+      valides: compteurs?.listeAttente.valides,
+      libelleValides: "inscrits",
+      enAttente: 0,
+      libelleEnAttente: "",
+    },
   ];
 
   const introBlocks = await getCmsPageBlocks("espace-bureau");
