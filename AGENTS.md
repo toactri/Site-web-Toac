@@ -11,5 +11,6 @@ The repository owner has pre-authorized skipping pull request review for Claude 
 
 Les requêtes SQL sur Neon (`toac-adherents`, données adhérents du site) et Supabase (`toac-cms`) sont autorisées sans confirmation. En contrepartie :
 
-- Avant toute grosse opération en écriture (UPDATE/DELETE de masse, import, modification de schéma), créer un snapshot Neon (`mcp__Neon__create_snapshot`, projet `crimson-glitter-46032367`) ; côté Supabase, copier d'abord les tables concernées dans une table de sauvegarde datée (`CREATE TABLE <table>_backup_AAAAMMJJ AS SELECT * FROM <table>`).
-- Ne jamais supprimer de projet, branche, base ou rôle sans accord explicite de l'utilisateur.
+- Avant toute grosse opération en écriture sur des données existantes (UPDATE/DELETE de masse, import qui remplace des lignes, modification de schéma d'une table existante), créer un snapshot Neon (`mcp__Neon__create_snapshot`, projet `crimson-glitter-46032367`, branche `main`). Le quota est d'un seul snapshot : le nouveau remplace le précédent, qui peut être supprimé sans demander (`mcp__Neon__delete_snapshot`), après vérification qu'il s'agit bien d'un snapshot manuel créé par une session Claude. Côté Supabase, copier d'abord les tables concernées dans une table de sauvegarde datée (`CREATE TABLE <table>_backup_AAAAMMJJ AS SELECT * FROM <table>`, puis `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`).
+- Pas de snapshot ni de sauvegarde nécessaires pour une opération purement additive : création d'une table neuve, ajout de colonnes, insertion de lignes dans une table neuve.
+- Ne jamais supprimer de projet, branche, base ou rôle sans accord explicite de l'utilisateur (le remplacement du snapshot ci-dessus est la seule exception).
