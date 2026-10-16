@@ -13,7 +13,7 @@ import {
   type ConnexionJetonRow,
 } from "@/lib/db";
 import { createSessionToken, type SessionRole } from "@/lib/session";
-import { superAdminEmails } from "@/lib/superAdmin";
+import { resolveRoles, aAccesBureau } from "@/lib/roles";
 
 /**
  * Connexion à l'espace adhérents par email, sans mot de passe.
@@ -25,8 +25,9 @@ import { superAdminEmails } from "@/lib/superAdmin";
  * l'adhésion de la saison fait office de compte, et un adhérent qui ne
  * renouvelle pas perd l'accès au premier import de la saison suivante.
  *
- * Les adresses de ADMIN_EMAILS (séparées par des virgules) obtiennent le rôle
- * bureau, qu'elles figurent ou non parmi les adhérents.
+ * Les personnes ayant un rôle sur le site (bureau, coach — Bureau → Rôles et
+ * accès) ou super-administrateurs peuvent aussi se connecter, qu'elles
+ * figurent ou non parmi les adhérents (src/lib/roles.ts).
  */
 
 /** Durée de validité d'un lien / code. */
@@ -46,17 +47,6 @@ export function isPlausibleEmail(email: string): boolean {
   return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function adminEmails(): Set<string> {
-  return new Set([
-    ...(process.env.ADMIN_EMAILS ?? "")
-      .split(",")
-      .map(normalizeEmail)
-      .filter(Boolean),
-    // Les super-administrateurs sont aussi membres du bureau (src/lib/superAdmin.ts).
-    ...superAdminEmails(),
-  ]);
-}
-
 /** N'accepte qu'un chemin interne au site comme destination après connexion. */
 export function safeNextPath(next: unknown): string | null {
   if (typeof next !== "string") return null;
@@ -71,29 +61,33 @@ export interface LoginIdentity {
   role: SessionRole;
 }
 
-function identityFromAdherent(adherent: AdherentSaisonRow, email: string): LoginIdentity {
+async function identityFromAdherent(adherent: AdherentSaisonRow, email: string): Promise<LoginIdentity> {
+  const r = await resolveRoles(email);
   return {
     email,
     prenom: adherent.prenom,
     nomAffiche: `${adherent.prenom} ${adherent.nom}`.trim(),
-    role: adminEmails().has(email) ? "admin" : "member",
+    role: aAccesBureau(r) ? "admin" : "member",
   };
 }
 
-/** Identité correspondant à l'email saisi, ou null s'il n'est ni adhérent de la saison ni bureau. */
+/** Identité correspondant à l'email saisi, ou null s'il n'est ni adhérent de la saison ni titulaire d'un rôle. */
 export async function resolveIdentityByEmail(rawEmail: string): Promise<LoginIdentity | null> {
   const email = normalizeEmail(rawEmail);
   const saison = await getLatestSaison();
   const adherent = saison ? await findAdherentSaisonByEmail(saison, email) : null;
   if (adherent) return identityFromAdherent(adherent, email);
-  if (adminEmails().has(email)) {
-    return { email, prenom: null, nomAffiche: process.env.ADMIN_NAME?.trim() || "Bureau TOAC", role: "admin" };
-  }
-  return null;
+
+  const r = await resolveRoles(email);
+  if (!r.superAdmin && r.roles.length === 0) return null;
+  const bureau = aAccesBureau(r);
+  const nomParDefaut = bureau ? process.env.ADMIN_NAME?.trim() || "Bureau TOAC" : "Coach TOAC";
+  const nomAffiche = r.nom?.trim() || nomParDefaut;
+  return { email, prenom: r.nom ? nomAffiche.split(" ")[0] : null, nomAffiche, role: bureau ? "admin" : "member" };
 }
 
 /** Identité d'un adhérent retrouvé par nom, prénom et date de naissance (son email de dossier). */
-export function identityFromAdherentRow(adherent: AdherentSaisonRow): LoginIdentity | null {
+export async function identityFromAdherentRow(adherent: AdherentSaisonRow): Promise<LoginIdentity | null> {
   if (!adherent.email?.trim()) return null;
   return identityFromAdherent(adherent, normalizeEmail(adherent.email));
 }

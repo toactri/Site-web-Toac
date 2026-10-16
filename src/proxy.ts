@@ -68,12 +68,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (
-    request.nextUrl.pathname.startsWith("/espace-adherents/bureau") &&
-    session.role !== "admin"
-  ) {
-    return NextResponse.redirect(new URL("/espace-adherents", request.url));
-  }
+  // Le rôle bureau n'est pas vérifié ici mais par chaque page et route du
+  // bureau (getSession), qui relit les rôles à jour : le rôle inscrit dans le
+  // cookie peut dater de la connexion.
 
   return NextResponse.next();
 }

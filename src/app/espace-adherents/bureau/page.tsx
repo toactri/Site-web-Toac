@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { isSuperAdmin } from "@/lib/superAdmin";
 import {
   getAdherentsSaison,
   getBureauCompteurs,
@@ -159,6 +160,14 @@ export default async function BureauDossiersPage() {
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-3">
+        {isSuperAdmin(session) && (
+          <Link
+            href="/espace-adherents/bureau/roles"
+            className="rounded-md border border-toac-blue-800/40 px-4 py-2 text-sm font-medium text-toac-blue-900/70 hover:bg-toac-blue-950 hover:text-white"
+          >
+            Rôles et accès →
+          </Link>
+        )}
         <Link
           href="/espace-adherents/bureau/diagnostic"
           className="rounded-md border border-toac-blue-800/40 px-4 py-2 text-sm font-medium text-toac-blue-900/70 hover:bg-toac-blue-950 hover:text-white"

@@ -20,7 +20,7 @@ export const WATCHED_VARS: { name: string; role: string }[] = [
   { name: "SESSION_SECRET", role: "Signature des cookies de l'espace adhérents" },
   { name: "ADMIN_USERNAME", role: "Identifiant du compte bureau" },
   { name: "ADMIN_PASSWORD", role: "Mot de passe du compte bureau" },
-  { name: "ADMIN_EMAILS", role: "Emails du bureau (connexion par email avec le rôle bureau)" },
+  { name: "ADMIN_EMAILS", role: "Obsolète : reprise une fois dans Bureau → Rôles et accès, peut être supprimée" },
   {
     name: "SUPER_ADMIN_EMAILS",
     role: "Super-administrateurs (import des adhérents, signature des attestations)",
