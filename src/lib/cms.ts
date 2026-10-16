@@ -114,6 +114,10 @@ type CmsNavRow = {
   auto_children?: string | null;
 };
 
+// Délai maximum d'un appel au CMS : au-delà, la page s'affiche avec son contenu
+// par défaut plutôt que d'attendre indéfiniment une réponse de Supabase.
+const CMS_TIMEOUT_MS = 5000;
+
 async function fetchFromCms<T>(table: string, query: string): Promise<T[] | null> {
   if (!isConfigured) return null;
 
@@ -134,6 +138,7 @@ async function fetchFromCms<T>(table: string, query: string): Promise<T[] | null
       // Lecture temps réel à chaque requête : coût négligeable pour ce
       // volume de contenu CMS, et supprime toute ambiguïté de timing.
       cache: "no-store",
+      signal: AbortSignal.timeout(CMS_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     return (await res.json()) as T[];
@@ -203,6 +208,7 @@ export async function getCmsPageBlocks(slug: string): Promise<CmsPageBlock[] | n
         Authorization: "Bearer " + CMS_CONFIG.supabaseAnonKey,
       },
       cache: "no-store", // voir fetchFromCms plus haut pour le pourquoi
+      signal: AbortSignal.timeout(CMS_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     return (await res.json()) as CmsPageBlock[];
@@ -273,6 +279,7 @@ export async function getCmsHiddenBlocks(slug: string): Promise<CmsHiddenBlock[]
         Authorization: "Bearer " + CMS_CONFIG.supabaseAnonKey,
       },
       cache: "no-store", // voir fetchFromCms plus haut pour le pourquoi
+      signal: AbortSignal.timeout(CMS_TIMEOUT_MS),
     });
     if (!res.ok) return [];
     return (await res.json()) as CmsHiddenBlock[];

@@ -11,7 +11,6 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Accueil", href: "/" },
   {
     label: "Le Club",
     href: "/le-club",
