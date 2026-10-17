@@ -6,6 +6,7 @@ import { Anton, Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ScrollToTop from "@/components/ScrollToTop";
 import AuthProvider from "@/components/AuthProvider";
 import {
   getCmsPageBlocks,
@@ -68,6 +69,7 @@ export default async function RootLayout({
         </head>
       )}
       <body className="flex min-h-full flex-col bg-white text-toac-blue-950">
+        <ScrollToTop />
         <AuthProvider>
           <CmsVariablesProvider value={cmsVariables}>
           <Suspense fallback={null}>
